@@ -1,0 +1,27 @@
+# Dependencies
+markdown:         redcarpet
+pygments:         true
+redcarpet:
+  extensions: [strikethrough, tables, no_intra_emphasis, fenced_code_blocks, autolink, with_toc_data]
+
+
+# Permalinks
+permalink:        pretty
+
+# Setup
+title:            Underengineering
+tagline:          'Build more with less'
+description:      '<img src="/public/images/niki.jpg" style="height: 90px;width: 90px; border-radius: 50%; -webkit-border-radius: 50%;-moz-border-radius: 50%;"><br />Software engineering with small, orhogonal, composable abstractions. And more.'
+url:              http://underengineering.com
+
+author:
+  name:           'Nikola Toshev'
+  url:            https://github.com/ntoshev
+
+paginate:         5
+
+# Custom vars
+version:          1.0.0
+
+github:
+  repo:           https://github.com/ntoshev/ntoshev.github.com

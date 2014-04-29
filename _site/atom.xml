@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+ <title>Underengineering</title>
+ <link href="http://underengineering.com/atom.xml" rel="self"/>
+ <link href="http://underengineering.com/"/>
+ <updated>2014-04-29T23:14:42+03:00</updated>
+ <id>http://underengineering.com</id>
+ <author>
+   <name>Nikola Toshev</name>
+   <email></email>
+ </author>
+
+ 
+ <entry>
+   <title>What underengineering?</title>
+   <link href="http://underengineering.com/2014/04/29/what-underengineering/"/>
+   <updated>2014-04-29T15:03:08Z</updated>
+   <id>http://underengineering.com/2014/04/29/what-underengineering</id>
+   <content type="html">&lt;p&gt;A lot of the troubles in software development I&amp;#39;ve seen stem from putting too much structure in your code. Too many layers of indirection, too much meta, too many classes, too much inheritance, too many FactoryFactories. In a series of posts I&amp;#39;ll attempt to show a different way: building small, orthogonal (arbitrary composable) abstractions and using them to do your job with minimal amount of code. The code you write with them should express your intent directly, in the problem domain, not hide it behind some incidental structure of the programming domain. &lt;/p&gt;
+
+&lt;p&gt;Here are some examples of beautiful code in Python that are not overengineered:&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;&lt;a href=&quot;http://norvig.com/&quot;&gt;Peter Norvig&lt;/a&gt;&amp;#39;s &lt;a href=&quot;http://norvig.com/ngrams/&quot;&gt;public&lt;/a&gt; &lt;a href=&quot;http://norvig.com/sudoku.html&quot;&gt;code&lt;/a&gt; and &lt;a href=&quot;https://www.udacity.com/course/cs212%E2%80%8E&quot;&gt;CS212&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&quot;https://github.com/facebook/tornado&quot;&gt;Tornado Web Framework&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&quot;https://github.com/defnull/bottle&quot;&gt;Bottle&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+</content>
+ </entry>
+ 
+
+</feed>
