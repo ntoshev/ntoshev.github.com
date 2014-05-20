@@ -106,6 +106,64 @@
   
   <div class="post">
     <h1 class="post-title">
+      <a href="/2014/05/04/monkey-patching-decorators-as-a-first-class-abstraction/">
+        Monkey patching decorators as a first class abstraction
+      </a>
+    </h1>
+
+    <span class="post-date">04 May 2014</span>
+
+    <p>Monkey patching is universally considered a bad practice. Nevertheless, people use it because it fills a gap in the common abstractions available in programming. I&#39;ll show you such cases and present certain types of monkey patching that are mostly safe.</p>
+
+<h2 id="toc_0">High volume HTTP requests and DNS resolution</h2>
+
+<p>A common gotcha when writing a crawler is that the bottleneck you will likely hit first is the DNS resolution. I also hit this problem when prototyping <a href="https://t1mr.com">https://t1mr.com</a> (pronounced &#39;timer&#39;, a website availability tool whose basic function is to make an http request to your site every minute and notify you if it&#39;s down). It is weird to diagnose because, depending on your DNS infrastructure, you can get various failures:
+ * your home / office router may crash
+ * the DNS infrastructure of your hosting provider may start to return random errors for some of the requests - some timeouts, some other failures (I experienced this with both Hetzner and Amazon EC2)
+ * <a href="https://developers.google.com/speed/public-dns/">Google&#39;s Public DNS service</a> would actually behave quite nicely by servicing all your requests, although rate limiting them to 10 resolutions per second.</p>
+
+<p>I&#39;ve seen all of the above, and eventually settled to use Google&#39;s DNS because it&#39;s solid and predictable. But I wanted to make the basic service for t1mr free, so it had to be cheap to run and scale well on a single machine. 10 req/second are just 600 per minute, and I really wanted to saturate the network link.</p>
+
+<p>Normally one would set up a DNS cache on his server and use that. I didn&#39;t quite get this to work (perhaps I exhausted the cache), but I didn&#39;t really try because I wanted maximum control over when and how the domain names are resolved. So how can you do such a thing in the application?</p>
+
+<p>DNS resolutions are normally handled by the OS. When you open a socket to a remote server specified by name, the  OS blocks that system call and resolves it (unless it is already cached). Resolution can take 100s of milliseconds, that&#39;s why high level frameworks that allow non-blocking code (Python with gevent or node.js) has their own way of doing it (they both use c-ares or blocking OS syscalls in threadpools depending on configuration).</p>
+
+<p>You can modify the http call to use an IP address and set the Host header appropriately. This works, although you have to do it yourself because http libraries typically lack support for it. But in t1mr.com I want to provide checking other types of services besides http, say ICMP ping or SMTP check. The other protocols lack the option to use an IP and specify the domain name separately.</p>
+
+<p>What I did instead was monkey-patch getaddrinfo with memoization decorator. Here is a generic memoizer: </p>
+<div class="highlight"><pre><code class="python language-python" data-lang="python"><span class="k">def</span> <span class="nf">memoize</span><span class="p">(</span><span class="n">f</span><span class="p">):</span>
+  <span class="k">global</span> <span class="n">cache</span>
+  <span class="n">cache</span><span class="o">=</span> <span class="p">{}</span>
+  <span class="k">def</span> <span class="nf">memf</span><span class="p">(</span><span class="o">*</span><span class="n">x</span><span class="p">):</span>
+      <span class="k">if</span> <span class="n">x</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">cache</span><span class="p">:</span>
+          <span class="n">cache</span><span class="p">[</span><span class="n">x</span><span class="p">]</span> <span class="o">=</span> <span class="n">f</span><span class="p">(</span><span class="o">*</span><span class="n">x</span><span class="p">)</span>
+      <span class="k">return</span> <span class="n">cache</span><span class="p">[</span><span class="n">x</span><span class="p">]</span>
+  <span class="k">return</span> <span class="n">memf</span>
+</code></pre></div>
+<p>It is very general and can be used with pretty much any function, like: </p>
+<div class="highlight"><pre><code class="python language-python" data-lang="python"><span class="nd">@memoize</span>
+<span class="k">def</span> <span class="nf">fib</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">n</span><span class="o">&lt;</span><span class="mi">2</span><span class="p">:</span>
+        <span class="k">return</span> <span class="mi">1</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">fib</span><span class="p">(</span><span class="n">n</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="o">+</span><span class="n">fib</span><span class="p">(</span><span class="n">n</span><span class="o">-</span><span class="mi">2</span><span class="p">)</span>
+</code></pre></div>
+<p>In our case, it is good enough for prototyping. Here is how to monkey-patch <code>socket.getaddrinfo</code> with it:</p>
+<div class="highlight"><pre><code class="python language-python" data-lang="python"><span class="kn">import</span> <span class="nn">socket</span>
+<span class="n">socket</span><span class="o">.</span><span class="n">getaddrinfo</span> <span class="o">=</span> <span class="n">memoize</span><span class="p">(</span><span class="n">socket</span><span class="o">.</span><span class="n">getaddrinfo</span><span class="p">)</span>
+</code></pre></div>
+<p>In production we use gevent for efficient networking and a different decorator. Any networking code will now use under the hood our modified <code>getaddrinfo</code>, resolve the domain name only the first time and use a cached value from now on.</p>
+
+<p>This might seem like an isolated example where it&#39;s a good idea to patch lower level function, but it&#39;s not.</p>
+
+<h2 id="toc_1">Layered abstractions</h2>
+
+<p>Basically all computing is built on layers upon layers of abstractions. It is considered a good idea to implement a layer relying only upon the layer bellow, and it it. Net</p>
+
+  </div>
+  
+  <div class="post">
+    <h1 class="post-title">
       <a href="/2014/04/29/what-underengineering/">
         What underengineering?
       </a>

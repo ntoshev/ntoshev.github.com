@@ -4,13 +4,67 @@
  <title>Underengineering</title>
  <link href="http://underengineering.com/atom.xml" rel="self"/>
  <link href="http://underengineering.com/"/>
- <updated>2014-04-30T00:00:23+03:00</updated>
+ <updated>2014-05-20T18:40:53+03:00</updated>
  <id>http://underengineering.com</id>
  <author>
    <name>Nikola Toshev</name>
    <email></email>
  </author>
 
+ 
+ <entry>
+   <title>Monkey patching decorators as a first class abstraction</title>
+   <link href="http://underengineering.com/2014/05/04/monkey-patching-decorators-as-a-first-class-abstraction/"/>
+   <updated>2014-05-04T00:00:00+03:00</updated>
+   <id>http://underengineering.com/2014/05/04/monkey-patching-decorators-as-a-first-class-abstraction</id>
+   <content type="html">&lt;p&gt;Monkey patching is universally considered a bad practice. Nevertheless, people use it because it fills a gap in the common abstractions available in programming. I&amp;#39;ll show you such cases and present certain types of monkey patching that are mostly safe.&lt;/p&gt;
+
+&lt;h2 id=&quot;toc_0&quot;&gt;High volume HTTP requests and DNS resolution&lt;/h2&gt;
+
+&lt;p&gt;A common gotcha when writing a crawler is that the bottleneck you will likely hit first is the DNS resolution. I also hit this problem when prototyping &lt;a href=&quot;https://t1mr.com&quot;&gt;https://t1mr.com&lt;/a&gt; (pronounced &amp;#39;timer&amp;#39;, a website availability tool whose basic function is to make an http request to your site every minute and notify you if it&amp;#39;s down). It is weird to diagnose because, depending on your DNS infrastructure, you can get various failures:
+ * your home / office router may crash
+ * the DNS infrastructure of your hosting provider may start to return random errors for some of the requests - some timeouts, some other failures (I experienced this with both Hetzner and Amazon EC2)
+ * &lt;a href=&quot;https://developers.google.com/speed/public-dns/&quot;&gt;Google&amp;#39;s Public DNS service&lt;/a&gt; would actually behave quite nicely by servicing all your requests, although rate limiting them to 10 resolutions per second.&lt;/p&gt;
+
+&lt;p&gt;I&amp;#39;ve seen all of the above, and eventually settled to use Google&amp;#39;s DNS because it&amp;#39;s solid and predictable. But I wanted to make the basic service for t1mr free, so it had to be cheap to run and scale well on a single machine. 10 req/second are just 600 per minute, and I really wanted to saturate the network link.&lt;/p&gt;
+
+&lt;p&gt;Normally one would set up a DNS cache on his server and use that. I didn&amp;#39;t quite get this to work (perhaps I exhausted the cache), but I didn&amp;#39;t really try because I wanted maximum control over when and how the domain names are resolved. So how can you do such a thing in the application?&lt;/p&gt;
+
+&lt;p&gt;DNS resolutions are normally handled by the OS. When you open a socket to a remote server specified by name, the  OS blocks that system call and resolves it (unless it is already cached). Resolution can take 100s of milliseconds, that&amp;#39;s why high level frameworks that allow non-blocking code (Python with gevent or node.js) has their own way of doing it (they both use c-ares or blocking OS syscalls in threadpools depending on configuration).&lt;/p&gt;
+
+&lt;p&gt;You can modify the http call to use an IP address and set the Host header appropriately. This works, although you have to do it yourself because http libraries typically lack support for it. But in t1mr.com I want to provide checking other types of services besides http, say ICMP ping or SMTP check. The other protocols lack the option to use an IP and specify the domain name separately.&lt;/p&gt;
+
+&lt;p&gt;What I did instead was monkey-patch getaddrinfo with memoization decorator. Here is a generic memoizer: &lt;/p&gt;
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;python language-python&quot; data-lang=&quot;python&quot;&gt;&lt;span class=&quot;k&quot;&gt;def&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;memoize&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;f&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;):&lt;/span&gt;
+  &lt;span class=&quot;k&quot;&gt;global&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;cache&lt;/span&gt;
+  &lt;span class=&quot;n&quot;&gt;cache&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{}&lt;/span&gt;
+  &lt;span class=&quot;k&quot;&gt;def&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;memf&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;x&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;):&lt;/span&gt;
+      &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;x&lt;/span&gt; &lt;span class=&quot;ow&quot;&gt;not&lt;/span&gt; &lt;span class=&quot;ow&quot;&gt;in&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;cache&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;
+          &lt;span class=&quot;n&quot;&gt;cache&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;x&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;f&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;x&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+      &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;cache&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;x&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;
+  &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;memf&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;It is very general and can be used with pretty much any function, like: &lt;/p&gt;
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;python language-python&quot; data-lang=&quot;python&quot;&gt;&lt;span class=&quot;nd&quot;&gt;@memoize&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;def&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;fib&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;n&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;):&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;n&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;2&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;else&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;fib&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;n&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;+&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;fib&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;n&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;2&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;In our case, it is good enough for prototyping. Here is how to monkey-patch &lt;code&gt;socket.getaddrinfo&lt;/code&gt; with it:&lt;/p&gt;
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;python language-python&quot; data-lang=&quot;python&quot;&gt;&lt;span class=&quot;kn&quot;&gt;import&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;socket&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;socket&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;getaddrinfo&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;memoize&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;socket&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;getaddrinfo&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;In production we use gevent for efficient networking and a different decorator. Any networking code will now use under the hood our modified &lt;code&gt;getaddrinfo&lt;/code&gt;, resolve the domain name only the first time and use a cached value from now on.&lt;/p&gt;
+
+&lt;p&gt;This might seem like an isolated example where it&amp;#39;s a good idea to patch lower level function, but it&amp;#39;s not.&lt;/p&gt;
+
+&lt;h2 id=&quot;toc_1&quot;&gt;Layered abstractions&lt;/h2&gt;
+
+&lt;p&gt;Basically all computing is built on layers upon layers of abstractions. It is considered a good idea to implement a layer relying only upon the layer bellow, and it it. Net&lt;/p&gt;
+</content>
+ </entry>
  
  <entry>
    <title>What underengineering?</title>
