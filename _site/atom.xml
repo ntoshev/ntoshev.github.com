@@ -4,7 +4,7 @@
  <title>Underengineering</title>
  <link href="http://underengineering.com/atom.xml" rel="self"/>
  <link href="http://underengineering.com/"/>
- <updated>2014-05-20T18:40:53+03:00</updated>
+ <updated>2014-05-22T19:20:52+03:00</updated>
  <id>http://underengineering.com</id>
  <author>
    <name>Nikola Toshev</name>
@@ -13,56 +13,154 @@
 
  
  <entry>
-   <title>Monkey patching decorators as a first class abstraction</title>
-   <link href="http://underengineering.com/2014/05/04/monkey-patching-decorators-as-a-first-class-abstraction/"/>
-   <updated>2014-05-04T00:00:00+03:00</updated>
-   <id>http://underengineering.com/2014/05/04/monkey-patching-decorators-as-a-first-class-abstraction</id>
-   <content type="html">&lt;p&gt;Monkey patching is universally considered a bad practice. Nevertheless, people use it because it fills a gap in the common abstractions available in programming. I&amp;#39;ll show you such cases and present certain types of monkey patching that are mostly safe.&lt;/p&gt;
+   <title>Do It Yourself NoSql</title>
+   <link href="http://underengineering.com/2014/05/22/DIY-NoSql/"/>
+   <updated>2014-05-22T20:19:00+03:00</updated>
+   <id>http://underengineering.com/2014/05/22/DIY-NoSql</id>
+   <content type="html">&lt;p&gt;In this post I will explore the possibility to write CRUD web applications without using a relational or nosql database. I&amp;#39;ll show that within certain constraints it is a fast and fun thing to do, very similar to building a prototype, but one that exhibits the characteristics of production-quality software. The resulting architecture is somewhat similar to &lt;a href=&quot;http://redis.io/&quot;&gt;Redis&lt;/a&gt;, except that it would be a (tiny) library instead of a separate server. I have built two web applications in this way and this is my default approach to new web apps now.&lt;/p&gt;
 
-&lt;h2 id=&quot;toc_0&quot;&gt;High volume HTTP requests and DNS resolution&lt;/h2&gt;
+&lt;p&gt;Let&amp;#39;s assume a web application whose data fit in main memory when represented in the language&amp;#39;s natural data structures. It will serve requests from a single core (very fast as long as CRUD is concerned). These constraints can be relaxed at the cost of implementing more software infrastructure, but we can go surprisingly long way without needing to. I will use Python, although other stacks can be used with similar effect, notably node.js.&lt;/p&gt;
 
-&lt;p&gt;A common gotcha when writing a crawler is that the bottleneck you will likely hit first is the DNS resolution. I also hit this problem when prototyping &lt;a href=&quot;https://t1mr.com&quot;&gt;https://t1mr.com&lt;/a&gt; (pronounced &amp;#39;timer&amp;#39;, a website availability tool whose basic function is to make an http request to your site every minute and notify you if it&amp;#39;s down). It is weird to diagnose because, depending on your DNS infrastructure, you can get various failures:
- * your home / office router may crash
- * the DNS infrastructure of your hosting provider may start to return random errors for some of the requests - some timeouts, some other failures (I experienced this with both Hetzner and Amazon EC2)
- * &lt;a href=&quot;https://developers.google.com/speed/public-dns/&quot;&gt;Google&amp;#39;s Public DNS service&lt;/a&gt; would actually behave quite nicely by servicing all your requests, although rate limiting them to 10 resolutions per second.&lt;/p&gt;
+&lt;p&gt;People use databases for query/indexing functionality, persistence and easy concurrent code. &lt;/p&gt;
 
-&lt;p&gt;I&amp;#39;ve seen all of the above, and eventually settled to use Google&amp;#39;s DNS because it&amp;#39;s solid and predictable. But I wanted to make the basic service for t1mr free, so it had to be cheap to run and scale well on a single machine. 10 req/second are just 600 per minute, and I really wanted to saturate the network link.&lt;/p&gt;
+&lt;h2 id=&quot;toc_0&quot;&gt;Data model, indexing and queries&lt;/h2&gt;
 
-&lt;p&gt;Normally one would set up a DNS cache on his server and use that. I didn&amp;#39;t quite get this to work (perhaps I exhausted the cache), but I didn&amp;#39;t really try because I wanted maximum control over when and how the domain names are resolved. So how can you do such a thing in the application?&lt;/p&gt;
+&lt;p&gt;As we&amp;#39;ll keep everything in memory, we&amp;#39;ll just use the language facilities to organize data, modify and query them. This could be a big topic, but I won&amp;#39;t go into much details here. A good way to start would be a structure of nested lists and dicts/hashes that starts from a &lt;code&gt;root&lt;/code&gt; variable and can be traversed using normal language facilities. Queries are easily expressed in Python with list comprehensions. Here is an example structure:&lt;/p&gt;
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;python language-python&quot; data-lang=&quot;python&quot;&gt;&lt;span class=&quot;n&quot;&gt;root&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+        &lt;span class=&quot;s&quot;&gt;&amp;quot;me@example.com&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+            &lt;span class=&quot;s&quot;&gt;&amp;quot;email&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&amp;quot;me@example.com&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; 
+            &lt;span class=&quot;s&quot;&gt;&amp;quot;salt&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&amp;quot;...&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; 
+            &lt;span class=&quot;s&quot;&gt;&amp;quot;passhash&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&amp;quot;...&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+            &lt;span class=&quot;s&quot;&gt;&amp;quot;data&amp;quot;&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{},&lt;/span&gt;
+            &lt;span class=&quot;s&quot;&gt;&amp;quot;options&amp;quot;&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+                &lt;span class=&quot;s&quot;&gt;&amp;quot;newsletter&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;bp&quot;&gt;True&lt;/span&gt;
+            &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+        &lt;span class=&quot;p&quot;&gt;},&lt;/span&gt; 
 
-&lt;p&gt;DNS resolutions are normally handled by the OS. When you open a socket to a remote server specified by name, the  OS blocks that system call and resolves it (unless it is already cached). Resolution can take 100s of milliseconds, that&amp;#39;s why high level frameworks that allow non-blocking code (Python with gevent or node.js) has their own way of doing it (they both use c-ares or blocking OS syscalls in threadpools depending on configuration).&lt;/p&gt;
-
-&lt;p&gt;You can modify the http call to use an IP address and set the Host header appropriately. This works, although you have to do it yourself because http libraries typically lack support for it. But in t1mr.com I want to provide checking other types of services besides http, say ICMP ping or SMTP check. The other protocols lack the option to use an IP and specify the domain name separately.&lt;/p&gt;
-
-&lt;p&gt;What I did instead was monkey-patch getaddrinfo with memoization decorator. Here is a generic memoizer: &lt;/p&gt;
-&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;python language-python&quot; data-lang=&quot;python&quot;&gt;&lt;span class=&quot;k&quot;&gt;def&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;memoize&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;f&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;):&lt;/span&gt;
-  &lt;span class=&quot;k&quot;&gt;global&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;cache&lt;/span&gt;
-  &lt;span class=&quot;n&quot;&gt;cache&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{}&lt;/span&gt;
-  &lt;span class=&quot;k&quot;&gt;def&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;memf&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;x&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;):&lt;/span&gt;
-      &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;x&lt;/span&gt; &lt;span class=&quot;ow&quot;&gt;not&lt;/span&gt; &lt;span class=&quot;ow&quot;&gt;in&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;cache&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;
-          &lt;span class=&quot;n&quot;&gt;cache&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;x&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;f&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;x&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
-      &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;cache&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;x&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;
-  &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;memf&lt;/span&gt;
+        &lt;span class=&quot;s&quot;&gt;&amp;quot;you@example.com&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+            &lt;span class=&quot;o&quot;&gt;...&lt;/span&gt;
+        &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
 &lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
-&lt;p&gt;It is very general and can be used with pretty much any function, like: &lt;/p&gt;
-&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;python language-python&quot; data-lang=&quot;python&quot;&gt;&lt;span class=&quot;nd&quot;&gt;@memoize&lt;/span&gt;
-&lt;span class=&quot;k&quot;&gt;def&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;fib&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;n&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;):&lt;/span&gt;
-    &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;n&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;2&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;
-        &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;
-    &lt;span class=&quot;k&quot;&gt;else&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;
-        &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;fib&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;n&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;+&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;fib&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;n&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;2&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;p&gt;At login attempts you would look up the user&amp;#39;s email address directly in the &lt;code&gt;root&lt;/code&gt;, and generally you should structure your data in such a way that you don&amp;#39;t need to iterate in order to find a piece of data. The data structures available in the standard library may not be enough, for example you might need to use something like &lt;a href=&quot;https://pypi.python.org/pypi/blist/&quot;&gt;blist&lt;/a&gt; for ordered collections with fast lookup. You might also want to use dedicated classes instead of generic dicts for your objects (using them with &lt;a href=&quot;https://docs.python.org/2/reference/datamodel.html#slots&quot;&gt;&lt;strong&gt;slots&lt;/strong&gt;&lt;/a&gt; would also reduce memory usage).&lt;/p&gt;
+
+&lt;p&gt;A query showing the percentage of users who opted in for your newsletter would look like:&lt;/p&gt;
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;python language-python&quot; data-lang=&quot;python&quot;&gt;&lt;span class=&quot;nb&quot;&gt;sum&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;u&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;#39;options&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;][&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;#39;newsletter&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;for&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;u&lt;/span&gt; &lt;span class=&quot;ow&quot;&gt;in&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;root&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;values&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;())&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;/&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;float&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;len&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;root&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;))&lt;/span&gt;
 &lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
-&lt;p&gt;In our case, it is good enough for prototyping. Here is how to monkey-patch &lt;code&gt;socket.getaddrinfo&lt;/code&gt; with it:&lt;/p&gt;
-&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;python language-python&quot; data-lang=&quot;python&quot;&gt;&lt;span class=&quot;kn&quot;&gt;import&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;socket&lt;/span&gt;
-&lt;span class=&quot;n&quot;&gt;socket&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;getaddrinfo&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;memoize&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;socket&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;getaddrinfo&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;h2 id=&quot;toc_1&quot;&gt;Easy concurrent code - Atomic, Isolated and Consistent&lt;/h2&gt;
+
+&lt;p&gt;Typical web applications are written so that the only shared state resides in the database. It takes care of concurrent access to the shared state - which is what the first three letters from &lt;a href=&quot;http://en.wikipedia.org/wiki/ACID&quot;&gt;ACID&lt;/a&gt; are about. We will keep all data in memory and use event driven architecture (single process, single thread) instead.&lt;/p&gt;
+
+&lt;p&gt;In Python I do it with &lt;a href=&quot;http://www.gevent.org/&quot;&gt;gevent&lt;/a&gt;. Gevent lets you write code that does asynchronous network I/O. Node.js is similar, but it uses callbacks while gevent uses coroutines. Many people don&amp;#39;t realize that the code they write with gevent or node.js has very different concurrency properties than the code that uses normal threads. When you use normal threads, you are exposed to race conditions everywhere in your code except where you use explicit concurrency primitives to avoid it. When you use gevent or node.js, there is a single process, so a single address space holding all of your data, and a single thread modifying them. Whenever you do I/O, the context switches to a different green thread (gevent) or different callback (node.js), creating the illusion of parallel execution. But now can have race conditions only on the I/O boundaries, where execution switches. As long as we don&amp;#39;t have I/O, the code executes as an atomic unit and no one interrupts it.&lt;/p&gt;
+
+&lt;h3 id=&quot;toc_2&quot;&gt;An example: counter&lt;/h3&gt;
+
+&lt;p&gt;To make this concrete, consider the example of a global counter implemented with the &lt;a href=&quot;http://bottlepy.org/&quot;&gt;bottle&lt;/a&gt; framework in Python:&lt;/p&gt;
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;python language-python&quot; data-lang=&quot;python&quot;&gt;&lt;span class=&quot;c&quot;&gt;#!/usr/bin/python&lt;/span&gt;
+
+&lt;span class=&quot;kn&quot;&gt;import&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;gevent&lt;/span&gt;
+&lt;span class=&quot;kn&quot;&gt;from&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;gevent&lt;/span&gt; &lt;span class=&quot;kn&quot;&gt;import&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;monkey&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;monkey&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;patch_all&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt;
+
+&lt;span class=&quot;c&quot;&gt;# hold all global state here&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;root&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;dict&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;cnt&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+
+&lt;span class=&quot;kn&quot;&gt;from&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;bottle&lt;/span&gt; &lt;span class=&quot;kn&quot;&gt;import&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;route&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;run&lt;/span&gt;
+
+&lt;span class=&quot;nd&quot;&gt;@route&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;#39;/&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;def&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;inc&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;():&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;n&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;root&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;#39;cnt&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;
+    &lt;span class=&quot;c&quot;&gt;# gevent.sleep is a yield statement, it switches to a different greenlet&lt;/span&gt;
+    &lt;span class=&quot;c&quot;&gt;# network I/O would have the same effect&lt;/span&gt;
+    &lt;span class=&quot;c&quot;&gt;# uncommenting it will result in incorrect count&lt;/span&gt;
+    &lt;span class=&quot;c&quot;&gt;#gevent.sleep() &lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;root&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;#39;cnt&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;n&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;+&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&amp;quot;Hello World #&lt;/span&gt;&lt;span class=&quot;si&quot;&gt;%i&lt;/span&gt;&lt;span class=&quot;s&quot;&gt; &amp;quot;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;%&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;n&lt;/span&gt;
+
+&lt;span class=&quot;n&quot;&gt;run&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;server&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;#39;gevent&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;host&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;#39;localhost&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;port&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;8080&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;debug&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;bp&quot;&gt;False&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
 &lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
-&lt;p&gt;In production we use gevent for efficient networking and a different decorator. Any networking code will now use under the hood our modified &lt;code&gt;getaddrinfo&lt;/code&gt;, resolve the domain name only the first time and use a cached value from now on.&lt;/p&gt;
+&lt;p&gt;Implemented in e.g. Java using threads (Python&amp;#39;s threads are not comparable due to the GIL) without synchronization would result in a race condition, and the counter will be less than the number of requests. With gevent, when you run the code as presented, you get:&lt;/p&gt;
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;text language-text&quot; data-lang=&quot;text&quot;&gt;nik@occam:~$ ab -n 1000 -c 10 http://localhost:8080/
+[...]
+Requests per second:    2555.79 [#/sec] (mean)
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;Then you can see there is no race condition and the counter is exact. Note that it is also fast, as data are in memory, there is no locking nor interprocess communication.&lt;/p&gt;
 
-&lt;p&gt;This might seem like an isolated example where it&amp;#39;s a good idea to patch lower level function, but it&amp;#39;s not.&lt;/p&gt;
+&lt;p&gt;&lt;img src=&quot;/public/images/gevent-concurrency-correct.png&quot; alt=&quot;Correct counter&quot;&gt;&lt;/p&gt;
 
-&lt;h2 id=&quot;toc_1&quot;&gt;Layered abstractions&lt;/h2&gt;
+&lt;p&gt;The commented &lt;code&gt;gevent.sleep(0)&lt;/code&gt; line does a &amp;quot;yield&amp;quot;, the current greenlet pauses and lets other threads run (which also happens when you do I/O). For our purposes this is the same as preemption by another thread at this point. If you uncomment it and re-run the test, sure enough, the counter would no longer be correct:&lt;/p&gt;
 
-&lt;p&gt;Basically all computing is built on layers upon layers of abstractions. It is considered a good idea to implement a layer relying only upon the layer bellow, and it it. Net&lt;/p&gt;
+&lt;p&gt;&lt;img src=&quot;/public/images/gevent-concurrency-wrong.png&quot; alt=&quot;Wrong counter&quot;&gt;&lt;/p&gt;
+
+&lt;p&gt;This basically means that as long as we are conscious about the I/O in our code, we can write multitasking code and reason about it fairly easily. In fact, a &lt;a href=&quot;http://en.wikipedia.org/wiki/Create,_read,_update_and_delete&quot;&gt;CRUD application&lt;/a&gt; that doesn&amp;#39;t call external services, would have each HTTP request executed in one piece, with no internal I/O boundaries. &lt;/p&gt;
+
+&lt;p&gt;With node.js the I/O boundaries are clearly delineated by callbacks. Everything within a function executes atomically. In gevent the I/O boundaries that matter are just network I/O (disk I/O is blocking in gevent, so it doesn&amp;#39;t cause switching to a different greenlet).&lt;/p&gt;
+
+&lt;h3 id=&quot;toc_3&quot;&gt;ACI&lt;/h3&gt;
+
+&lt;p&gt;Let&amp;#39;s ensure we cover the first 3 of the ACID database properties for code between two I/Os:&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;&lt;p&gt;Atomicity - all code executes or nothing does. In fact, the system may crash in the middle of our code executing, but this cannot be observed from the client (web browser). If we call external services from our code, they could observe non-atomic behavior.&lt;/p&gt;&lt;/li&gt;
+&lt;li&gt;&lt;p&gt;Consistency - we only transition between valid states. As long as the system is in valid state at the I/O calls, this property would hold. For a simple CRUD with no external services this means the programmer must make sure it is in valid state at the end of each HTTP request, which should be the case anyway. If our application only reads data from an external service, it should do so in transient variables before starting to modify its state.&lt;/p&gt;&lt;/li&gt;
+&lt;li&gt;&lt;p&gt;Isolation - the transactions appear to be executed serially, because they are in fact executed serially.&lt;/p&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;Before I handle durability in the next section, I want to point out that a nice use case for the technique as presented so far would be implementing a multiplayer poker game - there is plenty of shared server side state, it&amp;#39;s all transient (for the duration of the game), but concurrent updates to the state are easy because they do not actually run in parallel. It is important not to do too much computation in one chunk as this would increase latency in handling other requests that have come during this time.&lt;/p&gt;
+
+&lt;h2 id=&quot;toc_4&quot;&gt;Durability&lt;/h2&gt;
+
+&lt;p&gt;Real durability would make sure application state is fully persisted on disk before returning from an HTML handler. We&amp;#39;ll do this in a later post, and for now I&amp;#39;ll show how to persist everything every minute or so without breaking the nice properties we have established already. We can call this eventual durability by analogy with eventual consistency :)&lt;/p&gt;
+
+&lt;p&gt;Let&amp;#39;s dump a JSON image of the state on disk. In order to produce consistent image, we need to serialize it at once, with no I/O boundary in the middle, and this is the slowest part of the process. Actual writing of the file is an I/O boundary in node.js and synchronous operation with gevent. Here is a simple example that saves the state every minute (you can add this to the counting example above):&lt;/p&gt;
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;python language-python&quot; data-lang=&quot;python&quot;&gt;&lt;span class=&quot;kn&quot;&gt;import&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;tempfile&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;json&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;os&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;def&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;saveSnapshot&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;root&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;):&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;def&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;doSave&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;():&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;with&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;tempfile&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;NamedTemporaryFile&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;delete&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;bp&quot;&gt;False&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;as&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;fw&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;
+           &lt;span class=&quot;n&quot;&gt;tempname&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;fw&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;name&lt;/span&gt;
+           &lt;span class=&quot;n&quot;&gt;json&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;dump&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;root&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;fw&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;os&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;rename&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;tempname&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&amp;#39;snapshot.json&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;try&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;while&lt;/span&gt; &lt;span class=&quot;bp&quot;&gt;True&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;
+            &lt;span class=&quot;n&quot;&gt;gevent&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;sleep&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;60&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+            &lt;span class=&quot;n&quot;&gt;doSave&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;except&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;gevent&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;GreenletExit&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;doSave&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;gevent&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;spawn&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;saveSnapshot&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;root&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;Note that it doesn&amp;#39;t fsync (guarantee it&amp;#39;s written to disk when the code completes). The write system call returns as soon as the data are in OS&amp;#39;s buffers, so it would be fast. The lack of fsync should be OK from data integrity point of view: the file system is supposed to take care and do the rename only after it has fully written the file. Nevertheless I&amp;#39;ll provide an fsyncing implementation in a follow up.&lt;/p&gt;
+
+&lt;h3 id=&quot;toc_5&quot;&gt;Scalability bottlenecks&lt;/h3&gt;
+
+&lt;p&gt;Here are the bottlenecks you are likely to encounter as you scale the application. I&amp;#39;ll provide guidelines and fixes for them in follow up posts:&lt;/p&gt;
+
+&lt;ol&gt;
+&lt;li&gt;Snapshot becomes too big to serialize at once&lt;/li&gt;
+&lt;li&gt;Snapshot becomes too big to fsync to disk at once&lt;/li&gt;
+&lt;li&gt;State doesn&amp;#39;t fit in RAM&lt;/li&gt;
+&lt;li&gt;A single core can&amp;#39;t handle all processing&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;An initial implementation using this architecture should be about as expensive as a throwaway prototype, so don&amp;#39;t be afraid to start with it. When you need scale you can rewrite it using anything else with the benefit that you will know more about both your users&amp;#39; problem and how its technical solution should be implemented.&lt;/p&gt;
+
+&lt;h2 id=&quot;toc_6&quot;&gt;Redis comparison&lt;/h2&gt;
+
+&lt;p&gt;Redis is built using very similar principles internally: it is single threaded so no complex locking or synchronization is necessary. We have also implemented one of the Redis persistence mechanisms: RDB snapshotting. Redis does the snapshotting somewhat differently: it forks the database process and the parent continues serving requests while the child serializes the data. The memory after fork() is separate, so the new request won&amp;#39;t affect the snapshot in progress. We could do this in Python too (node.js lacks real fork) and avoid blocking the http server while serializing. However, this mechanism works better for Redis than it would in a high level language library. This is because Linux implements the logical separation of memory after fork() using &lt;a href=&quot;http://en.wikipedia.org/wiki/Copy-on-write&quot;&gt;copy-on-write&lt;/a&gt;, so the memory pages are actually shared between the parent and the child until the parent (that continues serving database requests) modifies some of them (at which point the OS produces a separate copy of the modified pages).&lt;/p&gt;
+
+&lt;p&gt;This works well in C, but in Python the OS would actually copy the memory of the parent process immediately. This costs CPU and uses twice the memory on snapshotting. Why would the memory split? Because of the automatic memory management in Python, which uses reference counters and stores them with the memory objects. While you traverse the object graph in order to serialize it, you would modify these reference counters and the OS would copy all the memory. This behavior is not unique to Python, the automatic memory management of other high level languages like Ruby interferes with the virtual memory copy-on-write mechanism in a similar way.&lt;/p&gt;
+
+&lt;p&gt;What is the difference between writing a Python app using DIY NoSql and a Python app using a Redis back-end? With Redis the data have to cross inter-process boundary to move between the application process and the database process. In fact, they often have to do it multiple times per http request with latencies and CPU usage to serialize/deserialize data adding up. That&amp;#39;s why Redis got Lua scripting - to be able to do application logic close to the data. Actually Redis with scripting is similar to the DIY NoSql architecture, except that now you can use languages other than Lua for scripting and the data storage mechanisms are embedded in the language vs the language being embedded in the data storage mechanisms.&lt;/p&gt;
+
+&lt;h2 id=&quot;toc_7&quot;&gt;Use cases&lt;/h2&gt;
+
+&lt;p&gt;There are a couple of public apps running on this architecture.&lt;/p&gt;
+
+&lt;h3 id=&quot;toc_8&quot;&gt;t1mr.com&lt;/h3&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://t1mr.com&quot;&gt;t1mr.com&lt;/a&gt; is a service that pings your site every minute to verify it is running (and might try to restart it if it&amp;#39;s down and your hosting provider has the API). I wanted the basic functionality to be free so it had to be very efficient. It cycles all the sites every minute, so an in-memory database is a good fit for it. It is network bound and can monitor tens of thousands of sites using a single core.&lt;/p&gt;
+
+&lt;h3 id=&quot;toc_9&quot;&gt;fleetnavi.com&lt;/h3&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://fleetnavi.com&quot;&gt;fleetnavi.com&lt;/a&gt; is a service that optimizes delivery routes. It solves a vehicle routing problem (a generalization of traveling salesman problem with multiple vehicles, time, capacity and other constraints) using Google Maps data. There are no particular performance constraints requiring the DIY NoSql, but it was the simplest and most flexible option. The optimization solvers run in external processes, so they don&amp;#39;t block the web server.&lt;/p&gt;
 </content>
  </entry>
  
