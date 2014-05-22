@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en-us">
+
+  <head>
+  <link href="http://gmpg.org/xfn/11" rel="profile">
+  <meta http-equiv="content-type" content="text/html; charset=utf-8">
+
+  <!-- Enable responsiveness on mobile devices-->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+
+  <title>
+    
+      Do It Yourself NoSql &middot; Underengineering
+    
+  </title>
+
+  <!-- CSS -->
+  <link rel="stylesheet" href="/public/css/poole.css">
+  <link rel="stylesheet" href="/public/css/syntax.css">
+  <link rel="stylesheet" href="/public/css/lanyon.css">
+  <link rel="stylesheet" href="http://fonts.googleapis.com/css?family=PT+Serif:400,400italic,700|PT+Sans:400">
+
+  <!-- Icons -->
+  <link rel="apple-touch-icon-precomposed" sizes="144x144" href="/public/apple-touch-icon-144-precomposed.png">
+  <link rel="shortcut icon" href="/public/favicon.ico">
+
+  <!-- RSS -->
+  <link rel="alternate" type="application/rss+xml" title="RSS" href="/atom.xml">
+
+  <!-- Google Analytics -->
+  <script>
+    (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+    (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+    m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+    })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+    ga('create', 'UA-50513103-1', 'underengineering.com');
+    ga('send', 'pageview');
+
+  </script>
+
+</head>
+
+
+  <body class="theme-base-08 layout-reverse">
+
+    <!-- Target for toggling the sidebar `.sidebar-checkbox` is for regular
+     styles, `#sidebar-checkbox` for behavior. -->
+<input type="checkbox" class="sidebar-checkbox" id="sidebar-checkbox">
+
+<!-- Toggleable sidebar -->
+<div class="sidebar" id="sidebar">
+  <div class="sidebar-item">
+    <p><img src="/public/images/niki.jpg" style="height: 90px;width: 90px; border-radius: 50%; -webkit-border-radius: 50%;-moz-border-radius: 50%;"><br />Software engineering with small, orhogonal, composable abstractions. And more.</p>
+  </div>
+
+  <nav class="sidebar-nav">
+    <a class="sidebar-nav-item" href="/">Home</a>
+
+    
+
+    
+    
+      
+    
+      
+        
+      
+    
+      
+        
+          <a class="sidebar-nav-item" href="/about/">About</a>
+        
+      
+    
+      
+        
+      
+    
+
+    <a class="sidebar-nav-item" href="https://github.com/ntoshev/ntoshev.github.com">This blog on GitHub - fork and send pull request to correct something or guest blog!</a>
+  </nav>
+
+  <div class="sidebar-item">
+    <p>
+      &copy; 2014. All rights reserved.
+    </p>
+  </div>
+</div>
+
+
+    <!-- Wrap is the content to shift when toggling the sidebar. We wrap the
+         content to avoid any CSS collisions with our real content. -->
+    <div class="wrap">
+      <div class="masthead">
+        <div class="container">
+          <h3 class="masthead-title">
+            <a href="/" title="Home">Underengineering</a>
+            <small>Build more with less</small>
+          </h3>
+        </div>
+      </div>
+
+      <div class="container content">
+        <div class="post">
+  <h1 class="post-title">Do It Yourself NoSql</h1>
+  <span class="post-date">22 May 2014</span>
+  <p>In this post I will explore the possibility to write CRUD web applications without using a relational or nosql database. I&#39;ll show that within certain constraints it is a fast and fun thing to do, very similar to building a prototype, but one that exhibits the characteristics of production-quality software. The resulting architecture is somewhat similar to <a href="http://redis.io/">Redis</a>, except that it would be a (tiny) library instead of a separate server. I have built two web applications in this way and this is my default approach to new web apps now.</p>
+
+<p>Let&#39;s assume a web application whose data fit in main memory when represented in the language&#39;s natural data structures. It will serve requests from a single core (very fast as long as CRUD is concerned). These constraints can be relaxed at the cost of implementing more software infrastructure, but we can go surprisingly long way without needing to. I will use Python, although other stacks can be used with similar effect, notably node.js.</p>
+
+<p>People use databases for query/indexing functionality, persistence and easy concurrent code. </p>
+
+<h2 id="toc_0">Data model, indexing and queries</h2>
+
+<p>As we&#39;ll keep everything in memory, we&#39;ll just use the language facilities to organize data, modify and query them. This could be a big topic, but I won&#39;t go into much details here. A good way to start would be a structure of nested lists and dicts/hashes that starts from a <code>root</code> variable and can be traversed using normal language facilities. Queries are easily expressed in Python with list comprehensions. Here is an example structure:</p>
+<div class="highlight"><pre><code class="python language-python" data-lang="python"><span class="n">root</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s">&quot;me@example.com&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s">&quot;email&quot;</span><span class="p">:</span> <span class="s">&quot;me@example.com&quot;</span><span class="p">,</span> 
+            <span class="s">&quot;salt&quot;</span><span class="p">:</span> <span class="s">&quot;...&quot;</span><span class="p">,</span> 
+            <span class="s">&quot;passhash&quot;</span><span class="p">:</span> <span class="s">&quot;...&quot;</span><span class="p">,</span>
+            <span class="s">&quot;data&quot;</span> <span class="p">:</span> <span class="p">{},</span>
+            <span class="s">&quot;options&quot;</span> <span class="p">:</span> <span class="p">{</span>
+                <span class="s">&quot;newsletter&quot;</span><span class="p">:</span> <span class="bp">True</span>
+            <span class="p">}</span>
+        <span class="p">},</span> 
+
+        <span class="s">&quot;you@example.com&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="o">...</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+</code></pre></div>
+<p>At login attempts you would look up the user&#39;s email address directly in the <code>root</code>, and generally you should structure your data in such a way that you don&#39;t need to iterate in order to find a piece of data. The data structures available in the standard library may not be enough, for example you might need to use something like <a href="https://pypi.python.org/pypi/blist/">blist</a> for ordered collections with fast lookup. You might also want to use dedicated classes instead of generic dicts for your objects (using them with <a href="https://docs.python.org/2/reference/datamodel.html#slots"><strong>slots</strong></a> would also reduce memory usage).</p>
+
+<p>A query showing the percentage of users who opted in for your newsletter would look like:</p>
+<div class="highlight"><pre><code class="python language-python" data-lang="python"><span class="nb">sum</span><span class="p">(</span><span class="n">u</span><span class="p">[</span><span class="s">&#39;options&#39;</span><span class="p">][</span><span class="s">&#39;newsletter&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">u</span> <span class="ow">in</span> <span class="n">root</span><span class="o">.</span><span class="n">values</span><span class="p">())</span> <span class="o">/</span> <span class="nb">float</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">root</span><span class="p">))</span>
+</code></pre></div>
+<h2 id="toc_1">Easy concurrent code - Atomic, Isolated and Consistent</h2>
+
+<p>Typical web applications are written so that the only shared state resides in the database. It takes care of concurrent access to the shared state - which is what the first three letters from <a href="http://en.wikipedia.org/wiki/ACID">ACID</a> are about. We will keep all data in memory and use event driven architecture (single process, single thread) instead.</p>
+
+<p>In Python I do it with <a href="http://www.gevent.org/">gevent</a>. Gevent lets you write code that does asynchronous network I/O. Node.js is similar, but it uses callbacks while gevent uses coroutines. Many people don&#39;t realize that the code they write with gevent or node.js has very different concurrency properties than the code that uses normal threads. When you use normal threads, you are exposed to race conditions everywhere in your code except where you use explicit concurrency primitives to avoid it. When you use gevent or node.js, there is a single process, so a single address space holding all of your data, and a single thread modifying them. Whenever you do I/O, the context switches to a different green thread (gevent) or different callback (node.js), creating the illusion of parallel execution. But now can have race conditions only on the I/O boundaries, where execution switches. As long as we don&#39;t have I/O, the code executes as an atomic unit and no one interrupts it.</p>
+
+<h3 id="toc_2">An example: counter</h3>
+
+<p>To make this concrete, consider the example of a global counter implemented with the <a href="http://bottlepy.org/">bottle</a> framework in Python:</p>
+<div class="highlight"><pre><code class="python language-python" data-lang="python"><span class="c">#!/usr/bin/python</span>
+
+<span class="kn">import</span> <span class="nn">gevent</span>
+<span class="kn">from</span> <span class="nn">gevent</span> <span class="kn">import</span> <span class="n">monkey</span><span class="p">;</span><span class="n">monkey</span><span class="o">.</span><span class="n">patch_all</span><span class="p">()</span>
+
+<span class="c"># hold all global state here</span>
+<span class="n">root</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">cnt</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+<span class="kn">from</span> <span class="nn">bottle</span> <span class="kn">import</span> <span class="n">route</span><span class="p">,</span> <span class="n">run</span>
+
+<span class="nd">@route</span><span class="p">(</span><span class="s">&#39;/&#39;</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">inc</span><span class="p">():</span>
+    <span class="n">n</span> <span class="o">=</span> <span class="n">root</span><span class="p">[</span><span class="s">&#39;cnt&#39;</span><span class="p">]</span>
+    <span class="c"># gevent.sleep is a yield statement, it switches to a different greenlet</span>
+    <span class="c"># network I/O would have the same effect</span>
+    <span class="c"># uncommenting it will result in incorrect count</span>
+    <span class="c">#gevent.sleep() </span>
+    <span class="n">root</span><span class="p">[</span><span class="s">&#39;cnt&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">n</span><span class="o">+</span><span class="mi">1</span>
+    <span class="k">return</span> <span class="s">&quot;Hello World #</span><span class="si">%i</span><span class="s"> &quot;</span> <span class="o">%</span> <span class="n">n</span>
+
+<span class="n">run</span><span class="p">(</span><span class="n">server</span><span class="o">=</span><span class="s">&#39;gevent&#39;</span><span class="p">,</span> <span class="n">host</span><span class="o">=</span><span class="s">&#39;localhost&#39;</span><span class="p">,</span> <span class="n">port</span><span class="o">=</span><span class="mi">8080</span><span class="p">,</span> <span class="n">debug</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+</code></pre></div>
+<p>Implemented in e.g. Java using threads (Python&#39;s threads are not comparable due to the GIL) without synchronization would result in a race condition, and the counter will be less than the number of requests. With gevent, when you run the code as presented, you get:</p>
+<div class="highlight"><pre><code class="text language-text" data-lang="text">nik@occam:~$ ab -n 1000 -c 10 http://localhost:8080/
+[...]
+Requests per second:    2555.79 [#/sec] (mean)
+</code></pre></div>
+<p>Then you can see there is no race condition and the counter is exact. Note that it is also fast, as data are in memory, there is no locking nor interprocess communication.</p>
+
+<p><img src="/public/images/gevent-concurrency-correct.png" alt="Correct counter"></p>
+
+<p>The commented <code>gevent.sleep(0)</code> line does a &quot;yield&quot;, the current greenlet pauses and lets other threads run (which also happens when you do I/O). For our purposes this is the same as preemption by another thread at this point. If you uncomment it and re-run the test, sure enough, the counter would no longer be correct:</p>
+
+<p><img src="/public/images/gevent-concurrency-wrong.png" alt="Wrong counter"></p>
+
+<p>This basically means that as long as we are conscious about the I/O in our code, we can write multitasking code and reason about it fairly easily. In fact, a <a href="http://en.wikipedia.org/wiki/Create,_read,_update_and_delete">CRUD application</a> that doesn&#39;t call external services, would have each HTTP request executed in one piece, with no internal I/O boundaries. </p>
+
+<p>With node.js the I/O boundaries are clearly delineated by callbacks. Everything within a function executes atomically. In gevent the I/O boundaries that matter are just network I/O (disk I/O is blocking in gevent, so it doesn&#39;t cause switching to a different greenlet).</p>
+
+<h3 id="toc_3">ACI</h3>
+
+<p>Let&#39;s ensure we cover the first 3 of the ACID database properties for code between two I/Os:</p>
+
+<ul>
+<li><p>Atomicity - all code executes or nothing does. In fact, the system may crash in the middle of our code executing, but this cannot be observed from the client (web browser). If we call external services from our code, they could observe non-atomic behavior.</p></li>
+<li><p>Consistency - we only transition between valid states. As long as the system is in valid state at the I/O calls, this property would hold. For a simple CRUD with no external services this means the programmer must make sure it is in valid state at the end of each HTTP request, which should be the case anyway. If our application only reads data from an external service, it should do so in transient variables before starting to modify its state.</p></li>
+<li><p>Isolation - the transactions appear to be executed serially, because they are in fact executed serially.</p></li>
+</ul>
+
+<p>Before I handle durability in the next section, I want to point out that a nice use case for the technique as presented so far would be implementing a multiplayer poker game - there is plenty of shared server side state, it&#39;s all transient (for the duration of the game), but concurrent updates to the state are easy because they do not actually run in parallel. It is important not to do too much computation in one chunk as this would increase latency in handling other requests that have come during this time.</p>
+
+<h2 id="toc_4">Durability</h2>
+
+<p>Real durability would make sure application state is fully persisted on disk before returning from an HTML handler. We&#39;ll do this in a later post, and for now I&#39;ll show how to persist everything every minute or so without breaking the nice properties we have established already. We can call this eventual durability by analogy with eventual consistency :)</p>
+
+<p>Let&#39;s dump a JSON image of the state on disk. In order to produce consistent image, we need to serialize it at once, with no I/O boundary in the middle, and this is the slowest part of the process. Actual writing of the file is an I/O boundary in node.js and synchronous operation with gevent. Here is a simple example that saves the state every minute (you can add this to the counting example above):</p>
+<div class="highlight"><pre><code class="python language-python" data-lang="python"><span class="kn">import</span> <span class="nn">tempfile</span><span class="o">,</span> <span class="nn">json</span><span class="o">,</span> <span class="nn">os</span>
+<span class="k">def</span> <span class="nf">saveSnapshot</span><span class="p">(</span><span class="n">root</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">doSave</span><span class="p">():</span>
+        <span class="k">with</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">NamedTemporaryFile</span><span class="p">(</span><span class="n">delete</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span> <span class="k">as</span> <span class="n">fw</span><span class="p">:</span>
+           <span class="n">tempname</span> <span class="o">=</span> <span class="n">fw</span><span class="o">.</span><span class="n">name</span>
+           <span class="n">json</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">root</span><span class="p">,</span> <span class="n">fw</span><span class="p">)</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="n">tempname</span><span class="p">,</span> <span class="s">&#39;snapshot.json&#39;</span><span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
+            <span class="n">gevent</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">60</span><span class="p">)</span>
+            <span class="n">doSave</span><span class="p">()</span>
+    <span class="k">except</span> <span class="n">gevent</span><span class="o">.</span><span class="n">GreenletExit</span><span class="p">:</span>
+        <span class="n">doSave</span><span class="p">()</span>
+<span class="n">gevent</span><span class="o">.</span><span class="n">spawn</span><span class="p">(</span><span class="n">saveSnapshot</span><span class="p">,</span> <span class="n">root</span><span class="p">)</span>
+</code></pre></div>
+<p>Note that it doesn&#39;t fsync (guarantee it&#39;s written to disk when the code completes). The write system call returns as soon as the data are in OS&#39;s buffers, so it would be fast. The lack of fsync should be OK from data integrity point of view: the file system is supposed to take care and do the rename only after it has fully written the file. Nevertheless I&#39;ll provide an fsyncing implementation in a follow up.</p>
+
+<h3 id="toc_5">Scalability bottlenecks</h3>
+
+<p>Here are the bottlenecks you are likely to encounter as you scale the application. I&#39;ll provide guidelines and fixes for them in follow up posts:</p>
+
+<ol>
+<li>Snapshot becomes too big to serialize at once</li>
+<li>Snapshot becomes too big to fsync to disk at once</li>
+<li>State doesn&#39;t fit in RAM</li>
+<li>A single core can&#39;t handle all processing</li>
+</ol>
+
+<p>An initial implementation using this architecture should be about as expensive as a throwaway prototype, so don&#39;t be afraid to start with it. When you need scale you can rewrite it using anything else with the benefit that you will know more about both your users&#39; problem and how its technical solution should be implemented.</p>
+
+<h2 id="toc_6">Redis comparison</h2>
+
+<p>Redis is built using very similar principles internally: it is single threaded so no complex locking or synchronization is necessary. We have also implemented one of the Redis persistence mechanisms: RDB snapshotting. Redis does the snapshotting somewhat differently: it forks the database process and the parent continues serving requests while the child serializes the data. The memory after fork() is separate, so the new request won&#39;t affect the snapshot in progress. We could do this in Python too (node.js lacks real fork) and avoid blocking the http server while serializing. However, this mechanism works better for Redis than it would in a high level language library. This is because Linux implements the logical separation of memory after fork() using <a href="http://en.wikipedia.org/wiki/Copy-on-write">copy-on-write</a>, so the memory pages are actually shared between the parent and the child until the parent (that continues serving database requests) modifies some of them (at which point the OS produces a separate copy of the modified pages).</p>
+
+<p>This works well in C, but in Python the OS would actually copy the memory of the parent process immediately. This costs CPU and uses twice the memory on snapshotting. Why would the memory split? Because of the automatic memory management in Python, which uses reference counters and stores them with the memory objects. While you traverse the object graph in order to serialize it, you would modify these reference counters and the OS would copy all the memory. This behavior is not unique to Python, the automatic memory management of other high level languages like Ruby interferes with the virtual memory copy-on-write mechanism in a similar way.</p>
+
+<p>What is the difference between writing a Python app using DIY NoSql and a Python app using a Redis back-end? With Redis the data have to cross inter-process boundary to move between the application process and the database process. In fact, they often have to do it multiple times per http request with latencies and CPU usage to serialize/deserialize data adding up. That&#39;s why Redis got Lua scripting - to be able to do application logic close to the data. Actually Redis with scripting is similar to the DIY NoSql architecture, except that now you can use languages other than Lua for scripting and the data storage mechanisms are embedded in the language vs the language being embedded in the data storage mechanisms.</p>
+
+<h2 id="toc_7">Use cases</h2>
+
+<p>There are a couple of public apps running on this architecture.</p>
+
+<h3 id="toc_8">t1mr.com</h3>
+
+<p><a href="https://t1mr.com">t1mr.com</a> is a service that pings your site every minute to verify it is running (and might try to restart it if it&#39;s down and your hosting provider has the API). I wanted the basic functionality to be free so it had to be very efficient. It cycles all the sites every minute, so an in-memory database is a good fit for it. It is network bound and can monitor tens of thousands of sites using a single core.</p>
+
+<h3 id="toc_9">fleetnavi.com</h3>
+
+<p><a href="https://fleetnavi.com">fleetnavi.com</a> is a service that optimizes delivery routes. It solves a vehicle routing problem (a generalization of traveling salesman problem with multiple vehicles, time, capacity and other constraints) using Google Maps data. There are no particular performance constraints requiring the DIY NoSql, but it was the simplest and most flexible option. The optimization solvers run in external processes, so they don&#39;t block the web server.</p>
+
+</div>
+
+<div class="related">
+  <h2>Related Posts</h2>
+  <ul class="related-posts">
+    
+      <li>
+        <h3>
+          <a href="/2014/04/29/what-underengineering/">
+            What underengineering?
+            <small>29 Apr 2014</small>
+          </a>
+        </h3>
+      </li>
+    
+  </ul>
+</div>
+
+      </div>
+    </div>
+
+    <label for="sidebar-checkbox" class="sidebar-toggle"></label>
+
+  </body>
+</html>
