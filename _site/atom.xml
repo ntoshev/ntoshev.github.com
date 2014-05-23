@@ -4,7 +4,7 @@
  <title>Underengineering</title>
  <link href="http://underengineering.com/atom.xml" rel="self"/>
  <link href="http://underengineering.com/"/>
- <updated>2014-05-22T20:32:57+03:00</updated>
+ <updated>2014-05-23T16:50:48+03:00</updated>
  <id>http://underengineering.com</id>
  <author>
    <name>Nikola Toshev</name>
@@ -17,9 +17,11 @@
    <link href="http://underengineering.com/2014/05/22/DIY-NoSql/"/>
    <updated>2014-05-22T20:19:00+03:00</updated>
    <id>http://underengineering.com/2014/05/22/DIY-NoSql</id>
-   <content type="html">&lt;p&gt;In this post I will explore the possibility to write CRUD web applications without using a relational or nosql database. I&amp;#39;ll show that within certain constraints it is a fast and fun thing to do, very similar to building a prototype, but one that exhibits the characteristics of production-quality software. The resulting architecture is somewhat similar to &lt;a href=&quot;http://redis.io/&quot;&gt;Redis&lt;/a&gt;, except that it would be a (tiny) library instead of a separate server.&lt;/p&gt;
+   <content type="html">&lt;p&gt;In this post I will explore the possibility to write &lt;a href=&quot;http://en.wikipedia.org/wiki/Create,_read,_update_and_delete&quot;&gt;CRUD&lt;/a&gt; web applications without using a relational or nosql database - have the data tier collapse into the application. I&amp;#39;ll show that within certain constraints it is a fast and fun thing to do, very similar to building a prototype, but one that exhibits the characteristics of production-quality software. The resulting architecture is somewhat similar to &lt;a href=&quot;http://redis.io/&quot;&gt;Redis&lt;/a&gt;, except that it would be a (tiny) library instead of a separate server.&lt;/p&gt;
 
-&lt;p&gt;Let&amp;#39;s assume a web application whose data fit in main memory when represented in the language&amp;#39;s natural data structures. It will serve requests from a single core (very fast as long as CRUD is concerned). These constraints can be relaxed at the cost of implementing more software infrastructure, but we can go surprisingly long way without needing to. I will use Python, although other stacks can be used with similar effect, notably node.js.&lt;/p&gt;
+&lt;p&gt;The basic idea is simple: have a single process single threaded application. Use a high level language supporting &lt;a href=&quot;http://en.wikipedia.org/wiki/Green_threads&quot;&gt;green threads&lt;/a&gt; with &lt;a href=&quot;http://en.wikipedia.org/wiki/Asynchronous_I/O&quot;&gt;async I/O&lt;/a&gt; (&lt;a href=&quot;http://en.wikipedia.org/wiki/Computer_multitasking#Cooperative_multitasking&quot;&gt;cooperative multitasking&lt;/a&gt; within the application) to make it responsive and appear doing multiple things at once, but without the difficulties of real multithreaded programming (no locks or mutexes necessary). Implement simple on-disk persistence.&lt;/p&gt;
+
+&lt;p&gt;Let&amp;#39;s see what all this means and how the various pieces of this puzzle fall into places. There are certain assumptions that seem disturbing but can be relaxed with a bit more software infrastructure - notably that the data must fit into memory when represented in the language&amp;#39;s natural data structures. I will use Python, although other stacks can be used with similar effect, notably node.js.&lt;/p&gt;
 
 &lt;p&gt;People use databases for query/indexing functionality, persistence and easy concurrent code. Let&amp;#39;s look how we would handle all these.&lt;/p&gt;
 
@@ -91,7 +93,7 @@ Requests per second:    2555.79 [#/sec] (mean)
 
 &lt;p&gt;&lt;img src=&quot;/public/images/gevent-concurrency-wrong.png&quot; alt=&quot;Wrong counter&quot;&gt;&lt;/p&gt;
 
-&lt;p&gt;This basically means that as long as we are conscious about the I/O in our code, we can write multitasking code and reason about it fairly easily. In fact, a &lt;a href=&quot;http://en.wikipedia.org/wiki/Create,_read,_update_and_delete&quot;&gt;CRUD application&lt;/a&gt; that doesn&amp;#39;t call external services, would have each HTTP request executed in one piece, with no internal I/O boundaries. &lt;/p&gt;
+&lt;p&gt;This basically means that as long as we are conscious about the I/O in our code, we can write multitasking code and reason about it fairly easily. In fact, a CRUD application that doesn&amp;#39;t call external services, would have each HTTP request executed in one piece, with no internal I/O boundaries. &lt;/p&gt;
 
 &lt;p&gt;With node.js the I/O boundaries are clearly delineated by callbacks. Everything within a function executes atomically. In gevent the I/O boundaries that matter are just network I/O (disk I/O is blocking in gevent, so it doesn&amp;#39;t cause switching to a different greenlet).&lt;/p&gt;
 
@@ -174,7 +176,7 @@ Requests per second:    2555.79 [#/sec] (mean)
 &lt;p&gt;Here are some examples of beautiful code in Python that are not overengineered:&lt;/p&gt;
 
 &lt;ul&gt;
-&lt;li&gt;&lt;a href=&quot;http://norvig.com/&quot;&gt;Peter Norvig&lt;/a&gt;&amp;#39;s &lt;a href=&quot;http://norvig.com/ngrams/&quot;&gt;public&lt;/a&gt; &lt;a href=&quot;http://norvig.com/sudoku.html&quot;&gt;code&lt;/a&gt; and &lt;a href=&quot;https://www.udacity.com/course/cs212%E2%80%8E&quot;&gt;CS212&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&quot;http://norvig.com/&quot;&gt;Peter Norvig&lt;/a&gt;&amp;#39;s &lt;a href=&quot;http://norvig.com/ngrams/&quot;&gt;public&lt;/a&gt; &lt;a href=&quot;http://norvig.com/sudoku.html&quot;&gt;code&lt;/a&gt; and &lt;a href=&quot;https://www.udacity.com/course/cs212&quot;&gt;CS212&lt;/a&gt;&lt;/li&gt;
 &lt;li&gt;&lt;a href=&quot;https://github.com/facebook/tornado&quot;&gt;Tornado Web Framework&lt;/a&gt;&lt;/li&gt;
 &lt;li&gt;&lt;a href=&quot;https://github.com/defnull/bottle&quot;&gt;Bottle&lt;/a&gt;&lt;/li&gt;
 &lt;/ul&gt;

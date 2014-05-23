@@ -9,7 +9,7 @@ A lot of the troubles in software development I've seen stem from putting too mu
 
 Here are some examples of beautiful code in Python that are not overengineered:
 
-* [Peter Norvig](http://norvig.com/)'s [public](http://norvig.com/ngrams/) [code](http://norvig.com/sudoku.html) and [CS212](https://www.udacity.com/course/cs212‎)
+* [Peter Norvig](http://norvig.com/)'s [public](http://norvig.com/ngrams/) [code](http://norvig.com/sudoku.html) and [CS212](https://www.udacity.com/course/cs212)
 * [Tornado Web Framework](https://github.com/facebook/tornado)
 * [Bottle](https://github.com/defnull/bottle)
 

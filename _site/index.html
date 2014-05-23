@@ -113,9 +113,11 @@
 
     <span class="post-date">22 May 2014</span>
 
-    <p>In this post I will explore the possibility to write CRUD web applications without using a relational or nosql database. I&#39;ll show that within certain constraints it is a fast and fun thing to do, very similar to building a prototype, but one that exhibits the characteristics of production-quality software. The resulting architecture is somewhat similar to <a href="http://redis.io/">Redis</a>, except that it would be a (tiny) library instead of a separate server.</p>
+    <p>In this post I will explore the possibility to write <a href="http://en.wikipedia.org/wiki/Create,_read,_update_and_delete">CRUD</a> web applications without using a relational or nosql database - have the data tier collapse into the application. I&#39;ll show that within certain constraints it is a fast and fun thing to do, very similar to building a prototype, but one that exhibits the characteristics of production-quality software. The resulting architecture is somewhat similar to <a href="http://redis.io/">Redis</a>, except that it would be a (tiny) library instead of a separate server.</p>
 
-<p>Let&#39;s assume a web application whose data fit in main memory when represented in the language&#39;s natural data structures. It will serve requests from a single core (very fast as long as CRUD is concerned). These constraints can be relaxed at the cost of implementing more software infrastructure, but we can go surprisingly long way without needing to. I will use Python, although other stacks can be used with similar effect, notably node.js.</p>
+<p>The basic idea is simple: have a single process single threaded application. Use a high level language supporting <a href="http://en.wikipedia.org/wiki/Green_threads">green threads</a> with <a href="http://en.wikipedia.org/wiki/Asynchronous_I/O">async I/O</a> (<a href="http://en.wikipedia.org/wiki/Computer_multitasking#Cooperative_multitasking">cooperative multitasking</a> within the application) to make it responsive and appear doing multiple things at once, but without the difficulties of real multithreaded programming (no locks or mutexes necessary). Implement simple on-disk persistence.</p>
+
+<p>Let&#39;s see what all this means and how the various pieces of this puzzle fall into places. There are certain assumptions that seem disturbing but can be relaxed with a bit more software infrastructure - notably that the data must fit into memory when represented in the language&#39;s natural data structures. I will use Python, although other stacks can be used with similar effect, notably node.js.</p>
 
 <p>People use databases for query/indexing functionality, persistence and easy concurrent code. Let&#39;s look how we would handle all these.</p>
 
@@ -187,7 +189,7 @@ Requests per second:    2555.79 [#/sec] (mean)
 
 <p><img src="/public/images/gevent-concurrency-wrong.png" alt="Wrong counter"></p>
 
-<p>This basically means that as long as we are conscious about the I/O in our code, we can write multitasking code and reason about it fairly easily. In fact, a <a href="http://en.wikipedia.org/wiki/Create,_read,_update_and_delete">CRUD application</a> that doesn&#39;t call external services, would have each HTTP request executed in one piece, with no internal I/O boundaries. </p>
+<p>This basically means that as long as we are conscious about the I/O in our code, we can write multitasking code and reason about it fairly easily. In fact, a CRUD application that doesn&#39;t call external services, would have each HTTP request executed in one piece, with no internal I/O boundaries. </p>
 
 <p>With node.js the I/O boundaries are clearly delineated by callbacks. Everything within a function executes atomically. In gevent the I/O boundaries that matter are just network I/O (disk I/O is blocking in gevent, so it doesn&#39;t cause switching to a different greenlet).</p>
 
@@ -274,7 +276,7 @@ Requests per second:    2555.79 [#/sec] (mean)
 <p>Here are some examples of beautiful code in Python that are not overengineered:</p>
 
 <ul>
-<li><a href="http://norvig.com/">Peter Norvig</a>&#39;s <a href="http://norvig.com/ngrams/">public</a> <a href="http://norvig.com/sudoku.html">code</a> and <a href="https://www.udacity.com/course/cs212%E2%80%8E">CS212</a></li>
+<li><a href="http://norvig.com/">Peter Norvig</a>&#39;s <a href="http://norvig.com/ngrams/">public</a> <a href="http://norvig.com/sudoku.html">code</a> and <a href="https://www.udacity.com/course/cs212">CS212</a></li>
 <li><a href="https://github.com/facebook/tornado">Tornado Web Framework</a></li>
 <li><a href="https://github.com/defnull/bottle">Bottle</a></li>
 </ul>
