@@ -4,7 +4,7 @@
  <title>Underengineering</title>
  <link href="http://underengineering.com/atom.xml" rel="self"/>
  <link href="http://underengineering.com/"/>
- <updated>2014-05-23T16:50:48+03:00</updated>
+ <updated>2014-05-23T17:41:49+03:00</updated>
  <id>http://underengineering.com</id>
  <author>
    <name>Nikola Toshev</name>
@@ -163,6 +163,10 @@ Requests per second:    2555.79 [#/sec] (mean)
 &lt;h3 id=&quot;toc_9&quot;&gt;fleetnavi.com&lt;/h3&gt;
 
 &lt;p&gt;&lt;a href=&quot;https://fleetnavi.com&quot;&gt;fleetnavi.com&lt;/a&gt; is a service that optimizes delivery routes. It solves a vehicle routing problem (a generalization of traveling salesman problem with multiple vehicles, time, capacity and other constraints) using Google Maps data. There are no particular performance constraints requiring the DIY NoSql, but it was the simplest and most flexible option. The optimization solvers run in external processes, so they don&amp;#39;t block the web server.&lt;/p&gt;
+
+&lt;hr/&gt;
+
+&lt;h2 id=&quot;toc_10&quot;&gt;&lt;a href=&quot;https://news.ycombinator.com/item?id=7789519&quot;&gt;Discuss on Hacker News&lt;/a&gt;&lt;/h2&gt;
 </content>
  </entry>
  
