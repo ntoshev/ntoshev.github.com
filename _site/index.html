@@ -39,6 +39,13 @@
 
   </script>
 
+  <script src="/public/js/jquery-1.11.1.min.js"></script>
+  <script src="/public/js/jquery.scrolldepth.min.js"></script>
+  <script>
+    $(function() {
+      $.scrollDepth();
+    });
+  </script>
 </head>
 
 
@@ -103,6 +110,102 @@
 
       <div class="container content">
         <div class="posts">
+  
+  <div class="post">
+    <h1 class="post-title">
+      <a href="/2014/07/24/monkey-patching-considered-harmless/">
+        Monkey Patching Considered Harmless (When Done Right)
+      </a>
+    </h1>
+
+    <span class="post-date">24 Jul 2014</span>
+
+    <p>Monkey patching is universally considered a bad practice. Many people avoid having anything to do with it (and with projects that use it, like <a href="http://www.gevent.org/">gevent</a>), without considering if the actual reasons for avoiding it apply to their case. So what are these reasons? I think the important ones are:</p>
+
+<ol>
+<li><p>The patched code works very differently from the unpatched, breaking assumptions the rest of the code has about it.</p></li>
+<li><p>Monkey patches making assumptions about the code they patch that are implementation detail and change between versions</p></li>
+</ol>
+
+<p>(Aside: Most nontrivial errors are about programmer coding wrong assumptions. These can be low level assumptions about how the code behaves or higher level assumptions about the domain that is being modeled.)</p>
+
+<p>Monkey patching is too general so it&#39;s easy to slip into one of these. Note that the same applies about things like inheritance (vs composition). You can avoid these problems with monkey patching if you:</p>
+
+<blockquote>
+<p>Write code to monkey patch functions or methods as decorators. Make that decorator general, i.e. assume as little about the modified code as possible. </p>
+</blockquote>
+
+<p>It is the second sentence that takes care of the problems above, but it is the decorators that make it possible to write such code (this is not strictly true, any higher order function will do, but decorators provide a nice convention with syntax sugar as an added bonus). We can apply Python decorators on existing functions and methods to permanently modify their behavior. Let&#39;s see how it&#39;s done concretely.</p>
+
+<h2 id="toc_0">Decorators</h2>
+
+<p>If you haven&#39;t actually created decorators, you may think about them as magic syntax sugar and not realize what decorators are actually designed to do is to be functions that take another function as an argument and modify it&#39;s behavior. However, decorators are usually applied at the moment of defining the function they apply to, this is when their special syntax is designed to be used:</p>
+<div class="highlight"><pre><code class="python language-python" data-lang="python"><span class="nd">@decorator</span>
+<span class="k">def</span> <span class="nf">func</span><span class="p">(</span><span class="n">arg1</span><span class="p">,</span> <span class="n">arg2</span><span class="p">):</span>
+    <span class="k">pass</span>
+</code></pre></div>
+<p>Without the syntax sugar, the way to do the same would be (note you can do this also in e.g. Javascript, so this style of monkey patching is available to you in other dynamic languages besides Python):</p>
+<div class="highlight"><pre><code class="python language-python" data-lang="python"><span class="k">def</span> <span class="nf">func</span><span class="p">(</span><span class="n">arg1</span><span class="p">,</span> <span class="n">arg2</span><span class="p">):</span>
+    <span class="k">pass</span>
+<span class="n">func</span> <span class="o">=</span> <span class="n">decorator</span><span class="p">(</span><span class="n">func</span><span class="p">)</span>
+</code></pre></div>
+<p>If the last line is separate from the function declaration, and the function wasn&#39;t specifically written to be decorated, you will effectively do monkey patching. Some decorators (e.g. doing logging) don&#39;t make any assumptions about the functions they decorate, and the decorated functions could be used without any decorator. Others (like <a href="http://bottlepy.org/docs/0.11/tutorial.html#request-routing">bottlepy&#39;s routing decorators</a> or <code>memoize</code> that you&#39;ll see bellow) make only a few assumptions. </p>
+
+<p>If you do monkey patching with decorators, you avoid the problems with them, because decorators are written to modify the function&#39;s behavior in an orthogonal way. Let&#39;s see a specific real-world example.</p>
+
+<h2 id="toc_1">High volume HTTP requests and DNS resolution</h2>
+
+<p>A common gotcha when writing a crawler is that the bottleneck you will likely hit first is the DNS resolution. I also hit this problem when prototyping <a href="https://t1mr.com">https://t1mr.com</a> (pronounced &#39;timer&#39;, a website availability tool whose basic function is to make an http request to your site every minute and notify you if it&#39;s down). It is weird to diagnose because, depending on your DNS infrastructure, you can get various failures:</p>
+
+<ul>
+<li>your home / office router may crash</li>
+<li>the DNS infrastructure of your hosting provider may start to return random errors for some of the requests - some timeouts, some other failures (I experienced this with both Hetzner and Amazon EC2)</li>
+<li><a href="https://developers.google.com/speed/public-dns/">Google&#39;s Public DNS service</a> would actually behave quite nicely by servicing all your requests, although rate limiting them to 10 resolutions per second.</li>
+</ul>
+
+<p>I eventually settled to use Google&#39;s DNS because it&#39;s solid and predictable. But I wanted to make the basic service for t1mr free, so it had to be cheap to run and scale well on a single machine. 10 req/second are just 600 per minute, and I really wanted to saturate the network link.</p>
+
+<p>Normally one would set up a DNS cache on his server and use that. I didn&#39;t quite get this to work (perhaps I exhausted the cache), but I didn&#39;t really try because I wanted maximum control over when and how the domain names are resolved. So how can you implement such a cache in the application?</p>
+
+<p>DNS resolutions are normally handled by the OS. When you open a socket to a remote server specified by name, the  OS blocks that system call and resolves it (unless it is already cached). Resolution can take 100s of milliseconds, that&#39;s why high level frameworks that allow non-blocking code (Python with gevent or node.js) has their own way of doing it (they both use c-ares or blocking OS syscalls in threadpools depending on configuration).</p>
+
+<p>You can modify the http call to use an IP address and set the Host header appropriately. This works, although you have to do it yourself because http libraries typically lack support for it. But in t1mr.com I want to provide checking other types of services besides http, say ICMP ping or SMTP check. The other protocols lack the option to use an IP and specify the domain name separately.</p>
+
+<p>What I did instead was monkey-patch <a href="https://docs.python.org/2/library/socket.html#socket.getaddrinfo"><code>getaddrinfo</code>(the function that resolves domain names)</a> with a memoization decorator. Here is a generic memoizer: </p>
+<div class="highlight"><pre><code class="python language-python" data-lang="python"><span class="k">def</span> <span class="nf">memoize</span><span class="p">(</span><span class="n">f</span><span class="p">):</span>
+  <span class="k">global</span> <span class="n">cache</span>
+  <span class="n">cache</span><span class="o">=</span> <span class="p">{}</span>
+  <span class="k">def</span> <span class="nf">memf</span><span class="p">(</span><span class="o">*</span><span class="n">x</span><span class="p">):</span>
+      <span class="k">if</span> <span class="n">x</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">cache</span><span class="p">:</span>
+          <span class="n">cache</span><span class="p">[</span><span class="n">x</span><span class="p">]</span> <span class="o">=</span> <span class="n">f</span><span class="p">(</span><span class="o">*</span><span class="n">x</span><span class="p">)</span>
+      <span class="k">return</span> <span class="n">cache</span><span class="p">[</span><span class="n">x</span><span class="p">]</span>
+  <span class="k">return</span> <span class="n">memf</span>
+</code></pre></div>
+<p>It is very general and can be used with pretty much any function, like: </p>
+<div class="highlight"><pre><code class="python language-python" data-lang="python"><span class="nd">@memoize</span>
+<span class="k">def</span> <span class="nf">fib</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">n</span><span class="o">&lt;</span><span class="mi">2</span><span class="p">:</span>
+        <span class="k">return</span> <span class="mi">1</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">fib</span><span class="p">(</span><span class="n">n</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="o">+</span><span class="n">fib</span><span class="p">(</span><span class="n">n</span><span class="o">-</span><span class="mi">2</span><span class="p">)</span>
+</code></pre></div>
+<p>In our case, it is good enough for prototyping. Here is how to monkey-patch <code>socket.getaddrinfo</code> with it:</p>
+<div class="highlight"><pre><code class="python language-python" data-lang="python"><span class="kn">import</span> <span class="nn">socket</span>
+<span class="n">socket</span><span class="o">.</span><span class="n">getaddrinfo</span> <span class="o">=</span> <span class="n">memoize</span><span class="p">(</span><span class="n">socket</span><span class="o">.</span><span class="n">getaddrinfo</span><span class="p">)</span>
+</code></pre></div>
+<p>In production we use gevent for efficient networking and a different decorator (that behaves mostly like a cache with expiration). Any networking code will now use under the hood our modified <code>getaddrinfo</code>, resolve the domain name only the first time and use a cached value from now on (unless the memoizer decides it is time to refresh).</p>
+
+<p>This might seem like an isolated example where it&#39;s a good idea to patch lower level function, but it&#39;s not.</p>
+
+<h2 id="toc_2">Layered abstractions</h2>
+
+<p>Basically all computing is built on layers upon layers of abstractions. It is considered a good idea to implement a layer relying only upon the layer bellow, and it it. Networks are probably the canonical example. One of the actual limits of this model is that you have to expose the low level abstractions to the high level for tweaking. If you don&#39;t have a mechanism to do this, low level abstractions often leak in a way that is not fixable from the high level code. Monkey patching the lower levels is not a panacea, but it can help here.</p>
+
+<h2 id="toc_3">Conclusion</h2>
+
+<p>Monkey patching is seen as an ugly kludge, but is still used quite a lot because people lack better ways to accomplish their goals using the abstractions available in their language. One way to do safe and useful monkey patching is to write the monkey patch as a decorator, making very few assumptions about the function being decorated, and get a nice orthogonal abstraction in this way.</p>
+
+  </div>
   
   <div class="post">
     <h1 class="post-title">
@@ -259,10 +362,6 @@ Requests per second:    2555.79 [#/sec] (mean)
 <h3 id="toc_9">fleetnavi.com</h3>
 
 <p><a href="https://fleetnavi.com">fleetnavi.com</a> is a service that optimizes delivery routes. It solves a vehicle routing problem (a generalization of traveling salesman problem with multiple vehicles, time, capacity and other constraints) using Google Maps data. There are no particular performance constraints requiring the DIY NoSql, but it was the simplest and most flexible option. The optimization solvers run in external processes, so they don&#39;t block the web server.</p>
-
-<hr/>
-
-<h2 id="toc_10"><a href="https://news.ycombinator.com/item?id=7789519">Discuss on Hacker News</a></h2>
 
   </div>
   
