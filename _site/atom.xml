@@ -4,7 +4,7 @@
  <title>Underengineering</title>
  <link href="http://underengineering.com/atom.xml" rel="self"/>
  <link href="http://underengineering.com/"/>
- <updated>2014-07-24T23:36:06+03:00</updated>
+ <updated>2014-12-13T19:13:27+02:00</updated>
  <id>http://underengineering.com</id>
  <author>
    <name>Nikola Toshev</name>
@@ -90,13 +90,13 @@
 &lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;python language-python&quot; data-lang=&quot;python&quot;&gt;&lt;span class=&quot;kn&quot;&gt;import&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;socket&lt;/span&gt;
 &lt;span class=&quot;n&quot;&gt;socket&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;getaddrinfo&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;memoize&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;socket&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;getaddrinfo&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
 &lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
-&lt;p&gt;In production we use gevent for efficient networking and a different decorator (that behaves mostly like a cache with expiration). Any networking code will now use under the hood our modified &lt;code&gt;getaddrinfo&lt;/code&gt;, resolve the domain name only the first time and use a cached value from now on (unless the memoizer decides it is time to refresh).&lt;/p&gt;
+&lt;p&gt;In production we use gevent for efficient networking and a different decorator (that behaves mostly like a cache with expiration). Any networking code will now use under the hood our modified &lt;code&gt;getaddrinfo&lt;/code&gt;, resolve the domain name only the first time and use a cached value from now on (until the memoizer decides it is time to refresh).&lt;/p&gt;
 
 &lt;p&gt;This might seem like an isolated example where it&amp;#39;s a good idea to patch lower level function, but it&amp;#39;s not.&lt;/p&gt;
 
 &lt;h2 id=&quot;toc_2&quot;&gt;Layered abstractions&lt;/h2&gt;
 
-&lt;p&gt;Basically all computing is built on layers upon layers of abstractions. It is considered a good idea to implement a layer relying only upon the layer bellow, and it it. Networks are probably the canonical example. One of the actual limits of this model is that you have to expose the low level abstractions to the high level for tweaking. If you don&amp;#39;t have a mechanism to do this, low level abstractions often leak in a way that is not fixable from the high level code. Monkey patching the lower levels is not a panacea, but it can help here.&lt;/p&gt;
+&lt;p&gt;Basically all computing is built on layers upon layers of abstractions. It is considered a good idea to implement a layer relying only upon the layer bellow, and it is. Networks are probably the canonical example. One of the actual limits of this model is that you have to expose the low level abstractions to the high level for tweaking. If you don&amp;#39;t have a mechanism to do this, low level abstractions often leak in a way that is not fixable from the high level code. Monkey patching the lower levels is not a panacea, but it can help here.&lt;/p&gt;
 
 &lt;h2 id=&quot;toc_3&quot;&gt;Conclusion&lt;/h2&gt;
 
@@ -212,6 +212,13 @@ Requests per second:    2555.79 [#/sec] (mean)
         &lt;span class=&quot;k&quot;&gt;with&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;tempfile&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;NamedTemporaryFile&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;delete&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;bp&quot;&gt;False&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;as&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;fw&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;
            &lt;span class=&quot;n&quot;&gt;tempname&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;fw&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;name&lt;/span&gt;
            &lt;span class=&quot;n&quot;&gt;json&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;dump&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;root&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;fw&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+           &lt;span class=&quot;c&quot;&gt;# had to add the following 2 lines to avoid data loss&lt;/span&gt;
+           &lt;span class=&quot;n&quot;&gt;fw&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;flush&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;c&quot;&gt;# flush any userspace buffers&lt;/span&gt;
+           &lt;span class=&quot;c&quot;&gt;# fsync would block the process&lt;/span&gt;
+           &lt;span class=&quot;c&quot;&gt;# so run os.fsync(fw.fileno()) in a thread pool&lt;/span&gt;
+           &lt;span class=&quot;n&quot;&gt;gevent&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;get_hub&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;threadpool&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;apply&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;os&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;fsync&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;fw&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;fileno&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(),))&lt;/span&gt; 
+           &lt;span class=&quot;c&quot;&gt;# note fsync is native and doesn&amp;#39;t engage GIL,&lt;/span&gt;
+           &lt;span class=&quot;c&quot;&gt;# allowing other code to run&lt;/span&gt;
         &lt;span class=&quot;n&quot;&gt;os&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;rename&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;tempname&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&amp;#39;snapshot.json&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
     &lt;span class=&quot;k&quot;&gt;try&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;
         &lt;span class=&quot;k&quot;&gt;while&lt;/span&gt; &lt;span class=&quot;bp&quot;&gt;True&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;
@@ -221,7 +228,9 @@ Requests per second:    2555.79 [#/sec] (mean)
         &lt;span class=&quot;n&quot;&gt;doSave&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt;
 &lt;span class=&quot;n&quot;&gt;gevent&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;spawn&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;saveSnapshot&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;root&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
 &lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
-&lt;p&gt;Note that it doesn&amp;#39;t fsync (guarantee it&amp;#39;s written to disk when the code completes). The write system call returns as soon as the data are in OS&amp;#39;s buffers, so it would be fast. The precise moment the data hit the disk doesn&amp;#39;t matter because the previous snapshot would be available. Data integrity should also be OK because the file system is supposed to take care and do the rename only after it has fully written the file. Nevertheless I&amp;#39;ll provide an fsyncing implementation in a follow up.&lt;/p&gt;
+&lt;p&gt;&lt;del&gt;Note that it doesn&amp;#39;t fsync (guarantee it&amp;#39;s written to disk when the code completes). The write system call returns as soon as the data are in OS&amp;#39;s buffers, so it would be fast. The precise moment the data hit the disk doesn&amp;#39;t matter because the previous snapshot would be available. Data integrity should also be OK because the file system is supposed to take care and do the rename only after it has fully written the file. Nevertheless I&amp;#39;ll provide an fsyncing implementation in a follow up.&lt;/del&gt; &lt;/p&gt;
+
+&lt;p&gt;Turned out the OS (at least Ubuntu 12.04 with ext4) doesn&amp;#39;t guarantee renaming would happen &lt;em&gt;after&lt;/em&gt; the file is written to disk. In fact, it would happily rename the file before committing new snapshot to disk, thus losing the old snapshot. Power loss in this moment leaves you with truncated, unusable snapshot. So I fsync the file here, in gevent&amp;#39;s default threadpool so that I don&amp;#39;t block the main thread from serving requests while it is fsyncing. I don&amp;#39;t fsync the rename operation, but it&amp;#39;s guaranteed rename will happen &lt;em&gt;after&lt;/em&gt; writing the snapshot to disk.&lt;/p&gt;
 
 &lt;h3 id=&quot;toc_5&quot;&gt;Scalability bottlenecks&lt;/h3&gt;
 

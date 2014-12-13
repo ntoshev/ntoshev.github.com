@@ -185,13 +185,13 @@
 <div class="highlight"><pre><code class="python language-python" data-lang="python"><span class="kn">import</span> <span class="nn">socket</span>
 <span class="n">socket</span><span class="o">.</span><span class="n">getaddrinfo</span> <span class="o">=</span> <span class="n">memoize</span><span class="p">(</span><span class="n">socket</span><span class="o">.</span><span class="n">getaddrinfo</span><span class="p">)</span>
 </code></pre></div>
-<p>In production we use gevent for efficient networking and a different decorator (that behaves mostly like a cache with expiration). Any networking code will now use under the hood our modified <code>getaddrinfo</code>, resolve the domain name only the first time and use a cached value from now on (unless the memoizer decides it is time to refresh).</p>
+<p>In production we use gevent for efficient networking and a different decorator (that behaves mostly like a cache with expiration). Any networking code will now use under the hood our modified <code>getaddrinfo</code>, resolve the domain name only the first time and use a cached value from now on (until the memoizer decides it is time to refresh).</p>
 
 <p>This might seem like an isolated example where it&#39;s a good idea to patch lower level function, but it&#39;s not.</p>
 
 <h2 id="toc_2">Layered abstractions</h2>
 
-<p>Basically all computing is built on layers upon layers of abstractions. It is considered a good idea to implement a layer relying only upon the layer bellow, and it it. Networks are probably the canonical example. One of the actual limits of this model is that you have to expose the low level abstractions to the high level for tweaking. If you don&#39;t have a mechanism to do this, low level abstractions often leak in a way that is not fixable from the high level code. Monkey patching the lower levels is not a panacea, but it can help here.</p>
+<p>Basically all computing is built on layers upon layers of abstractions. It is considered a good idea to implement a layer relying only upon the layer bellow, and it is. Networks are probably the canonical example. One of the actual limits of this model is that you have to expose the low level abstractions to the high level for tweaking. If you don&#39;t have a mechanism to do this, low level abstractions often leak in a way that is not fixable from the high level code. Monkey patching the lower levels is not a panacea, but it can help here.</p>
 
 <h2 id="toc_3">Conclusion</h2>
 

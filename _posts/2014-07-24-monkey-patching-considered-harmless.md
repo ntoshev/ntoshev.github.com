@@ -87,13 +87,13 @@ import socket
 socket.getaddrinfo = memoize(socket.getaddrinfo)
 ```
 
-In production we use gevent for efficient networking and a different decorator (that behaves mostly like a cache with expiration). Any networking code will now use under the hood our modified `getaddrinfo`, resolve the domain name only the first time and use a cached value from now on (unless the memoizer decides it is time to refresh).
+In production we use gevent for efficient networking and a different decorator (that behaves mostly like a cache with expiration). Any networking code will now use under the hood our modified `getaddrinfo`, resolve the domain name only the first time and use a cached value from now on (until the memoizer decides it is time to refresh).
 
 This might seem like an isolated example where it's a good idea to patch lower level function, but it's not.
 
 ## Layered abstractions
 
-Basically all computing is built on layers upon layers of abstractions. It is considered a good idea to implement a layer relying only upon the layer bellow, and it it. Networks are probably the canonical example. One of the actual limits of this model is that you have to expose the low level abstractions to the high level for tweaking. If you don't have a mechanism to do this, low level abstractions often leak in a way that is not fixable from the high level code. Monkey patching the lower levels is not a panacea, but it can help here.
+Basically all computing is built on layers upon layers of abstractions. It is considered a good idea to implement a layer relying only upon the layer bellow, and it is. Networks are probably the canonical example. One of the actual limits of this model is that you have to expose the low level abstractions to the high level for tweaking. If you don't have a mechanism to do this, low level abstractions often leak in a way that is not fixable from the high level code. Monkey patching the lower levels is not a panacea, but it can help here.
 
 ## Conclusion
 
