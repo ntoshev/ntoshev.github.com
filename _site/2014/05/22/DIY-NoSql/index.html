@@ -219,8 +219,8 @@ Requests per second:    2555.79 [#/sec] (mean)
            <span class="n">fw</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span> <span class="c"># flush any userspace buffers</span>
            <span class="c"># fsync would block the process</span>
            <span class="c"># so run os.fsync(fw.fileno()) in a thread pool</span>
-           <span class="n">gevent</span><span class="o">.</span><span class="n">get_hub</span><span class="p">()</span><span class="o">.</span><span class="n">threadpool</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">fsync</span><span class="p">,</span> <span class="p">(</span><span class="n">fw</span><span class="o">.</span><span class="n">fileno</span><span class="p">(),))</span> 
-           <span class="c"># note fsync is native and doesn&#39;t engage GIL,</span>
+           <span class="n">gevent</span><span class="o">.</span><span class="n">get_hub</span><span class="p">()</span><span class="o">.</span><span class="n">threadpool</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">fsync</span><span class="p">,</span> <span class="p">(</span><span class="n">fw</span><span class="o">.</span><span class="n">fileno</span><span class="p">(),))</span>
+           <span class="c"># note os.fsync is native and doesn&#39;t engage GIL,</span>
            <span class="c"># allowing other code to run</span>
         <span class="n">os</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="n">tempname</span><span class="p">,</span> <span class="s">&#39;snapshot.json&#39;</span><span class="p">)</span>
     <span class="k">try</span><span class="p">:</span>
@@ -233,7 +233,7 @@ Requests per second:    2555.79 [#/sec] (mean)
 </code></pre></div>
 <p><del>Note that it doesn&#39;t fsync (guarantee it&#39;s written to disk when the code completes). The write system call returns as soon as the data are in OS&#39;s buffers, so it would be fast. The precise moment the data hit the disk doesn&#39;t matter because the previous snapshot would be available. Data integrity should also be OK because the file system is supposed to take care and do the rename only after it has fully written the file. Nevertheless I&#39;ll provide an fsyncing implementation in a follow up.</del> </p>
 
-<p>Turned out the OS (at least Ubuntu 12.04 with ext4) doesn&#39;t guarantee renaming would happen <em>after</em> the file is written to disk. In fact, it would happily rename the file before committing new snapshot to disk, thus losing the old snapshot. Power loss in this moment leaves you with truncated, unusable snapshot. So I fsync the file here, in gevent&#39;s default threadpool so that I don&#39;t block the main thread from serving requests while it is fsyncing. I don&#39;t fsync the rename operation, but it&#39;s guaranteed rename will happen <em>after</em> writing the snapshot to disk.</p>
+<p>Turned out the OS (at least Ubuntu 12.04 with ext4) doesn&#39;t guarantee renaming would happen <em>after</em> the file is written to disk. In fact, it would happily rename the file before committing new snapshot to disk, thus losing the old snapshot. Power loss in this moment leaves you with truncated, unusable snapshot. So I <a href="http://linux.die.net/man/2/fsync">fsync</a> the file here, in gevent&#39;s default threadpool so that I don&#39;t block the main thread from serving requests while it is fsyncing. I don&#39;t fsync the rename operation, but it&#39;s guaranteed rename will happen <em>after</em> writing the snapshot to disk.</p>
 
 <h3 id="toc_5">Scalability bottlenecks</h3>
 
@@ -273,6 +273,15 @@ Requests per second:    2555.79 [#/sec] (mean)
 <div class="related">
   <h2>Related Posts</h2>
   <ul class="related-posts">
+    
+      <li>
+        <h3>
+          <a href="/2014/12/23/the-economics-of-ui/">
+            The Economics of UI
+            <small>23 Dec 2014</small>
+          </a>
+        </h3>
+      </li>
     
       <li>
         <h3>

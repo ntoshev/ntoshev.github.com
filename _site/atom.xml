@@ -4,13 +4,59 @@
  <title>Underengineering</title>
  <link href="http://underengineering.com/atom.xml" rel="self"/>
  <link href="http://underengineering.com/"/>
- <updated>2014-12-13T19:13:27+02:00</updated>
+ <updated>2014-12-23T14:14:41+02:00</updated>
  <id>http://underengineering.com</id>
  <author>
    <name>Nikola Toshev</name>
    <email></email>
  </author>
 
+ 
+ <entry>
+   <title>The Economics of UI</title>
+   <link href="http://underengineering.com/2014/12/23/the-economics-of-ui/"/>
+   <updated>2014-12-23T12:00:08Z</updated>
+   <id>http://underengineering.com/2014/12/23/the-economics-of-ui</id>
+   <content type="html">&lt;p&gt;&lt;em&gt;(and What To Do About It)&lt;/em&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;toc_0&quot;&gt;Cost at scale&lt;/h2&gt;
+
+&lt;p&gt;Software is famous for having marginal cost of essentially zero (the marginal cost is the cost of producing one more unit after the up-front cost, like building a factory, has been payed). This has big implications:&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;a natural winner-take-all dynamics of markets&lt;/li&gt;
+&lt;li&gt;venture capital ecosystem works&lt;/li&gt;
+&lt;li&gt;open source is economically possible&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;blockquote&gt;
+&lt;p&gt;&lt;em&gt;Note:&lt;/em&gt; If you believe that &lt;a href=&quot;http://www.wsj.com/articles/SB10001424053111903480904576512250915629460&quot;&gt;software is eating the world&lt;/a&gt;, this has interesting implications about the way the world of atoms is going to change soon. With software becoming a bigger component of physical goods and services, the fixed cost component to them is going to increase and the marginal cost is going to decrease. This means we might start to see some of the software-world dynamics (winner-take-all, venture capital, maybe even open source) in the physical economics as well. Uber and Tesla may be just precursors to a larger trend.&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;h2 id=&quot;toc_1&quot;&gt;UI&lt;/h2&gt;
+
+&lt;p&gt;Unlike the rest of the software, user interface has substantial marginal cost. An interface has two sides, UI has a software and a human side, each having different cost characteristics:&lt;/p&gt;
+
+&lt;ol&gt;
+&lt;li&gt;The software side has large fixed cost to build, and zero marginal cost.&lt;/li&gt;
+&lt;li&gt;The human side is the &lt;strong&gt;cost to adapt your users&amp;#39; brains&lt;/strong&gt; to the way the software side of your UI works. The up-front cost here is e.g. the cost of creating the user manual, the marginal cost is training, support, or hidden in the smaller viral coefficient of your consumer app.&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;This understanding allows you to make decisions if and when to invest more in the software side of good UI, in order to reduce the marginal cost on the human side. It also means having a minimal UI is a good thing all else being equal.&lt;/p&gt;
+
+&lt;h2 id=&quot;toc_2&quot;&gt;Modeling a domain&lt;/h2&gt;
+
+&lt;p&gt;Typical software models a part of the world with a set of hard rules. The user manipulates this formal model directly applying these rules via the user interface. Secondary effects from user actions are inferred by software and reflected on the model.&lt;/p&gt;
+
+&lt;p&gt;For example, in word processing, you get to manipulate text at higher level (type and edit text, apply formatting), with software inferring low level details (line breaks at page width, text flow around images, repeating header/footer etc). The computer maintains a model of text and applies deterministic operations on it. The model is fully transparent to the user, in fact he needs to understand it in order to use the software. After almost 40 years evolution and integration in the mainstream writing culture, the basic operations (typing and editing, line breaks, bold/italic/font/size formatting) feel natural. More complex things like maintaining consistent styling in a document are harder.&lt;/p&gt;
+
+&lt;h2 id=&quot;toc_3&quot;&gt;How to make minimal UI&lt;/h2&gt;
+
+&lt;p&gt;One way to make UI (or software) more useful is to have a richer formal model that infers and silently does many useful things: like a spreadsheet does formula recalculation, or like databases utilize indices and nontrivial plan optimizations to execute queries. Unfortunately, good formal models are few and far between.&lt;/p&gt;
+
+&lt;p&gt;When a nice formal theory of the domain is not available, you can still fake it by inferring side effects with a predictive model, or machine learning. For example, a word processing program might try to infer what is the consistent styling that the user wants and apply it. A good UI might be one that hides part of the internally used model and ask the user to provide only examples of what he wants done. If the inference is good enough, that simplifies the user&amp;#39;s mental model, so it reduces the marginal cost of your software.&lt;/p&gt;
+</content>
+ </entry>
  
  <entry>
    <title>Monkey Patching Considered Harmless (When Done Right)</title>
@@ -216,8 +262,8 @@ Requests per second:    2555.79 [#/sec] (mean)
            &lt;span class=&quot;n&quot;&gt;fw&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;flush&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;c&quot;&gt;# flush any userspace buffers&lt;/span&gt;
            &lt;span class=&quot;c&quot;&gt;# fsync would block the process&lt;/span&gt;
            &lt;span class=&quot;c&quot;&gt;# so run os.fsync(fw.fileno()) in a thread pool&lt;/span&gt;
-           &lt;span class=&quot;n&quot;&gt;gevent&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;get_hub&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;threadpool&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;apply&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;os&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;fsync&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;fw&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;fileno&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(),))&lt;/span&gt; 
-           &lt;span class=&quot;c&quot;&gt;# note fsync is native and doesn&amp;#39;t engage GIL,&lt;/span&gt;
+           &lt;span class=&quot;n&quot;&gt;gevent&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;get_hub&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;threadpool&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;apply&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;os&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;fsync&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;fw&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;fileno&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(),))&lt;/span&gt;
+           &lt;span class=&quot;c&quot;&gt;# note os.fsync is native and doesn&amp;#39;t engage GIL,&lt;/span&gt;
            &lt;span class=&quot;c&quot;&gt;# allowing other code to run&lt;/span&gt;
         &lt;span class=&quot;n&quot;&gt;os&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;rename&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;tempname&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&amp;#39;snapshot.json&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
     &lt;span class=&quot;k&quot;&gt;try&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;
@@ -230,7 +276,7 @@ Requests per second:    2555.79 [#/sec] (mean)
 &lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
 &lt;p&gt;&lt;del&gt;Note that it doesn&amp;#39;t fsync (guarantee it&amp;#39;s written to disk when the code completes). The write system call returns as soon as the data are in OS&amp;#39;s buffers, so it would be fast. The precise moment the data hit the disk doesn&amp;#39;t matter because the previous snapshot would be available. Data integrity should also be OK because the file system is supposed to take care and do the rename only after it has fully written the file. Nevertheless I&amp;#39;ll provide an fsyncing implementation in a follow up.&lt;/del&gt; &lt;/p&gt;
 
-&lt;p&gt;Turned out the OS (at least Ubuntu 12.04 with ext4) doesn&amp;#39;t guarantee renaming would happen &lt;em&gt;after&lt;/em&gt; the file is written to disk. In fact, it would happily rename the file before committing new snapshot to disk, thus losing the old snapshot. Power loss in this moment leaves you with truncated, unusable snapshot. So I fsync the file here, in gevent&amp;#39;s default threadpool so that I don&amp;#39;t block the main thread from serving requests while it is fsyncing. I don&amp;#39;t fsync the rename operation, but it&amp;#39;s guaranteed rename will happen &lt;em&gt;after&lt;/em&gt; writing the snapshot to disk.&lt;/p&gt;
+&lt;p&gt;Turned out the OS (at least Ubuntu 12.04 with ext4) doesn&amp;#39;t guarantee renaming would happen &lt;em&gt;after&lt;/em&gt; the file is written to disk. In fact, it would happily rename the file before committing new snapshot to disk, thus losing the old snapshot. Power loss in this moment leaves you with truncated, unusable snapshot. So I &lt;a href=&quot;http://linux.die.net/man/2/fsync&quot;&gt;fsync&lt;/a&gt; the file here, in gevent&amp;#39;s default threadpool so that I don&amp;#39;t block the main thread from serving requests while it is fsyncing. I don&amp;#39;t fsync the rename operation, but it&amp;#39;s guaranteed rename will happen &lt;em&gt;after&lt;/em&gt; writing the snapshot to disk.&lt;/p&gt;
 
 &lt;h3 id=&quot;toc_5&quot;&gt;Scalability bottlenecks&lt;/h3&gt;
 

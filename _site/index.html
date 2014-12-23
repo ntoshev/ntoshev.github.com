@@ -113,6 +113,56 @@
   
   <div class="post">
     <h1 class="post-title">
+      <a href="/2014/12/23/the-economics-of-ui/">
+        The Economics of UI
+      </a>
+    </h1>
+
+    <span class="post-date">23 Dec 2014</span>
+
+    <p><em>(and What To Do About It)</em></p>
+
+<h2 id="toc_0">Cost at scale</h2>
+
+<p>Software is famous for having marginal cost of essentially zero (the marginal cost is the cost of producing one more unit after the up-front cost, like building a factory, has been payed). This has big implications:</p>
+
+<ul>
+<li>a natural winner-take-all dynamics of markets</li>
+<li>venture capital ecosystem works</li>
+<li>open source is economically possible</li>
+</ul>
+
+<blockquote>
+<p><em>Note:</em> If you believe that <a href="http://www.wsj.com/articles/SB10001424053111903480904576512250915629460">software is eating the world</a>, this has interesting implications about the way the world of atoms is going to change soon. With software becoming a bigger component of physical goods and services, the fixed cost component to them is going to increase and the marginal cost is going to decrease. This means we might start to see some of the software-world dynamics (winner-take-all, venture capital, maybe even open source) in the physical economics as well. Uber and Tesla may be just precursors to a larger trend.</p>
+</blockquote>
+
+<h2 id="toc_1">UI</h2>
+
+<p>Unlike the rest of the software, user interface has substantial marginal cost. An interface has two sides, UI has a software and a human side, each having different cost characteristics:</p>
+
+<ol>
+<li>The software side has large fixed cost to build, and zero marginal cost.</li>
+<li>The human side is the <strong>cost to adapt your users&#39; brains</strong> to the way the software side of your UI works. The up-front cost here is e.g. the cost of creating the user manual, the marginal cost is training, support, or hidden in the smaller viral coefficient of your consumer app.</li>
+</ol>
+
+<p>This understanding allows you to make decisions if and when to invest more in the software side of good UI, in order to reduce the marginal cost on the human side. It also means having a minimal UI is a good thing all else being equal.</p>
+
+<h2 id="toc_2">Modeling a domain</h2>
+
+<p>Typical software models a part of the world with a set of hard rules. The user manipulates this formal model directly applying these rules via the user interface. Secondary effects from user actions are inferred by software and reflected on the model.</p>
+
+<p>For example, in word processing, you get to manipulate text at higher level (type and edit text, apply formatting), with software inferring low level details (line breaks at page width, text flow around images, repeating header/footer etc). The computer maintains a model of text and applies deterministic operations on it. The model is fully transparent to the user, in fact he needs to understand it in order to use the software. After almost 40 years evolution and integration in the mainstream writing culture, the basic operations (typing and editing, line breaks, bold/italic/font/size formatting) feel natural. More complex things like maintaining consistent styling in a document are harder.</p>
+
+<h2 id="toc_3">How to make minimal UI</h2>
+
+<p>One way to make UI (or software) more useful is to have a richer formal model that infers and silently does many useful things: like a spreadsheet does formula recalculation, or like databases utilize indices and nontrivial plan optimizations to execute queries. Unfortunately, good formal models are few and far between.</p>
+
+<p>When a nice formal theory of the domain is not available, you can still fake it by inferring side effects with a predictive model, or machine learning. For example, a word processing program might try to infer what is the consistent styling that the user wants and apply it. A good UI might be one that hides part of the internally used model and ask the user to provide only examples of what he wants done. If the inference is good enough, that simplifies the user&#39;s mental model, so it reduces the marginal cost of your software.</p>
+
+  </div>
+  
+  <div class="post">
+    <h1 class="post-title">
       <a href="/2014/07/24/monkey-patching-considered-harmless/">
         Monkey Patching Considered Harmless (When Done Right)
       </a>
@@ -323,8 +373,8 @@ Requests per second:    2555.79 [#/sec] (mean)
            <span class="n">fw</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span> <span class="c"># flush any userspace buffers</span>
            <span class="c"># fsync would block the process</span>
            <span class="c"># so run os.fsync(fw.fileno()) in a thread pool</span>
-           <span class="n">gevent</span><span class="o">.</span><span class="n">get_hub</span><span class="p">()</span><span class="o">.</span><span class="n">threadpool</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">fsync</span><span class="p">,</span> <span class="p">(</span><span class="n">fw</span><span class="o">.</span><span class="n">fileno</span><span class="p">(),))</span> 
-           <span class="c"># note fsync is native and doesn&#39;t engage GIL,</span>
+           <span class="n">gevent</span><span class="o">.</span><span class="n">get_hub</span><span class="p">()</span><span class="o">.</span><span class="n">threadpool</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">fsync</span><span class="p">,</span> <span class="p">(</span><span class="n">fw</span><span class="o">.</span><span class="n">fileno</span><span class="p">(),))</span>
+           <span class="c"># note os.fsync is native and doesn&#39;t engage GIL,</span>
            <span class="c"># allowing other code to run</span>
         <span class="n">os</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="n">tempname</span><span class="p">,</span> <span class="s">&#39;snapshot.json&#39;</span><span class="p">)</span>
     <span class="k">try</span><span class="p">:</span>
@@ -337,7 +387,7 @@ Requests per second:    2555.79 [#/sec] (mean)
 </code></pre></div>
 <p><del>Note that it doesn&#39;t fsync (guarantee it&#39;s written to disk when the code completes). The write system call returns as soon as the data are in OS&#39;s buffers, so it would be fast. The precise moment the data hit the disk doesn&#39;t matter because the previous snapshot would be available. Data integrity should also be OK because the file system is supposed to take care and do the rename only after it has fully written the file. Nevertheless I&#39;ll provide an fsyncing implementation in a follow up.</del> </p>
 
-<p>Turned out the OS (at least Ubuntu 12.04 with ext4) doesn&#39;t guarantee renaming would happen <em>after</em> the file is written to disk. In fact, it would happily rename the file before committing new snapshot to disk, thus losing the old snapshot. Power loss in this moment leaves you with truncated, unusable snapshot. So I fsync the file here, in gevent&#39;s default threadpool so that I don&#39;t block the main thread from serving requests while it is fsyncing. I don&#39;t fsync the rename operation, but it&#39;s guaranteed rename will happen <em>after</em> writing the snapshot to disk.</p>
+<p>Turned out the OS (at least Ubuntu 12.04 with ext4) doesn&#39;t guarantee renaming would happen <em>after</em> the file is written to disk. In fact, it would happily rename the file before committing new snapshot to disk, thus losing the old snapshot. Power loss in this moment leaves you with truncated, unusable snapshot. So I <a href="http://linux.die.net/man/2/fsync">fsync</a> the file here, in gevent&#39;s default threadpool so that I don&#39;t block the main thread from serving requests while it is fsyncing. I don&#39;t fsync the rename operation, but it&#39;s guaranteed rename will happen <em>after</em> writing the snapshot to disk.</p>
 
 <h3 id="toc_5">Scalability bottlenecks</h3>
 
