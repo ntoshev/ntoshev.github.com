@@ -4,7 +4,7 @@
  <title>Underengineering</title>
  <link href="http://underengineering.com/atom.xml" rel="self"/>
  <link href="http://underengineering.com/"/>
- <updated>2014-12-23T14:14:41+02:00</updated>
+ <updated>2014-12-23T19:19:39+02:00</updated>
  <id>http://underengineering.com</id>
  <author>
    <name>Nikola Toshev</name>
@@ -17,7 +17,8 @@
    <link href="http://underengineering.com/2014/12/23/the-economics-of-ui/"/>
    <updated>2014-12-23T12:00:08Z</updated>
    <id>http://underengineering.com/2014/12/23/the-economics-of-ui</id>
-   <content type="html">&lt;p&gt;&lt;em&gt;(and What To Do About It)&lt;/em&gt;&lt;/p&gt;
+   <content type="html">&lt;p&gt;&lt;img src=&quot;/public/images/complex-ui.png&quot;/&gt;
+&lt;em&gt;(and What To Do About It)&lt;/em&gt;&lt;/p&gt;
 
 &lt;h2 id=&quot;toc_0&quot;&gt;Cost at scale&lt;/h2&gt;
 
@@ -30,7 +31,7 @@
 &lt;/ul&gt;
 
 &lt;blockquote&gt;
-&lt;p&gt;&lt;em&gt;Note:&lt;/em&gt; If you believe that &lt;a href=&quot;http://www.wsj.com/articles/SB10001424053111903480904576512250915629460&quot;&gt;software is eating the world&lt;/a&gt;, this has interesting implications about the way the world of atoms is going to change soon. With software becoming a bigger component of physical goods and services, the fixed cost component to them is going to increase and the marginal cost is going to decrease. This means we might start to see some of the software-world dynamics (winner-take-all, venture capital, maybe even open source) in the physical economics as well. Uber and Tesla may be just precursors to a larger trend.&lt;/p&gt;
+&lt;p&gt;&lt;em&gt;Note:&lt;/em&gt; If you believe &lt;a href=&quot;http://www.wsj.com/articles/SB10001424053111903480904576512250915629460&quot;&gt;software is eating the world&lt;/a&gt;, this has interesting implications about the way the world of atoms is going to change soon. With software becoming a bigger component of physical goods and services, the fixed cost component to them is going to increase and the marginal cost is going to decrease. This means we might start to see some of the software-world dynamics (winner-take-all, venture capital, maybe even open source) in the physical economics as well. Uber and Tesla may be just precursors to a larger trend.&lt;/p&gt;
 &lt;/blockquote&gt;
 
 &lt;h2 id=&quot;toc_1&quot;&gt;UI&lt;/h2&gt;
