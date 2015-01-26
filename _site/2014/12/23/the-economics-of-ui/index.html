@@ -90,7 +90,7 @@
 
   <div class="sidebar-item">
     <p>
-      &copy; 2014. All rights reserved.
+      &copy; 2015. All rights reserved.
     </p>
   </div>
 </div>
@@ -112,8 +112,7 @@
         <div class="post">
   <h1 class="post-title">The Economics of UI</h1>
   <span class="post-date">23 Dec 2014</span>
-  <p><img src="/public/images/complex-ui.png"/>
-<em>(and What To Do About It)</em></p>
+  <p><em>(and What To Do About It)</em></p>
 
 <h2 id="toc_0">Cost at scale</h2>
 
@@ -142,7 +141,7 @@
 
 <h2 id="toc_2">Modeling a domain</h2>
 
-<p>Typical software models a part of the world with a set of hard rules. The user manipulates this formal model directly applying these rules via the user interface. Secondary effects from user actions are inferred by software and reflected on the model.</p>
+<p>Typical software models a part of the world with a set of hard rules. The user manipulates this formal model directly applying these rules via the user interface. Secondary effects from user actions are inferred by software and reflected in the model.</p>
 
 <p>For example, in word processing, you get to manipulate text at higher level (type and edit text, apply formatting), with software inferring low level details (line breaks at page width, text flow around images, repeating header/footer etc). The computer maintains a model of text and applies deterministic operations on it. The model is fully transparent to the user, in fact he needs to understand it in order to use the software. After almost 40 years evolution and integration in the mainstream writing culture, the basic operations (typing and editing, line breaks, bold/italic/font/size formatting) feel natural. More complex things like maintaining consistent styling in a document are harder.</p>
 
@@ -150,7 +149,7 @@
 
 <p>One way to make UI (or software) more useful is to have a richer formal model that infers and silently does many useful things: like a spreadsheet does formula recalculation, or like databases utilize indices and nontrivial plan optimizations to execute queries. Unfortunately, good formal models are few and far between.</p>
 
-<p>When a nice formal theory of the domain is not available, you can still fake it by inferring side effects with a predictive model, or machine learning. For example, a word processing program might try to infer what is the consistent styling that the user wants and apply it. A good UI might be one that hides part of the internally used model and ask the user to provide only examples of what he wants done. If the inference is good enough, that simplifies the user&#39;s mental model, so it reduces the marginal cost of your software.</p>
+<p>When a nice formal theory of the domain is not available, you can still fake it by inferring side effects with a predictive model, or machine learning. For example, a word processing program might try to infer what is the consistent styling that the user wants and apply it. A good UI might be one that hides part of the internally used model and asks the user to provide only examples of what he wants done. If the inference is good enough, that simplifies the user&#39;s mental model, so it reduces the marginal cost of your software.</p>
 
 </div>
 
