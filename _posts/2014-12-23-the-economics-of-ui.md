@@ -4,7 +4,6 @@ title: "The Economics of UI"
 date: 2014-12-23 14:00:08 +0200
 categories: 
 ---
-<img src="/public/images/complex-ui.png"/>
 *(and What To Do About It)*
 
 ## Cost at scale
