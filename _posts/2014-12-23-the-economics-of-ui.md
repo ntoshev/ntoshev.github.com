@@ -7,7 +7,7 @@ categories:
 *(and What To Do About It)*
 
 ## Cost at scale
-Software is famous for having marginal cost of essentially zero (the marginal cost is the cost of producing one more unit after the up-front cost, like building a factory, has been payed). This has big implications:
+Software is famous for having marginal cost of essentially zero (the marginal cost is the cost of producing one more unit after the up-front cost, like building a factory, has been paid). This has big implications:
 
 - a natural winner-take-all dynamics of markets
 - venture capital ecosystem works

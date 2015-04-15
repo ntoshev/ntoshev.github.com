@@ -4,7 +4,7 @@
  <title>Underengineering</title>
  <link href="http://underengineering.com/atom.xml" rel="self"/>
  <link href="http://underengineering.com/"/>
- <updated>2015-01-26T12:37:54+02:00</updated>
+ <updated>2015-04-15T11:45:38+03:00</updated>
  <id>http://underengineering.com</id>
  <author>
    <name>Nikola Toshev</name>
@@ -21,7 +21,7 @@
 
 &lt;h2 id=&quot;toc_0&quot;&gt;Cost at scale&lt;/h2&gt;
 
-&lt;p&gt;Software is famous for having marginal cost of essentially zero (the marginal cost is the cost of producing one more unit after the up-front cost, like building a factory, has been payed). This has big implications:&lt;/p&gt;
+&lt;p&gt;Software is famous for having marginal cost of essentially zero (the marginal cost is the cost of producing one more unit after the up-front cost, like building a factory, has been paid). This has big implications:&lt;/p&gt;
 
 &lt;ul&gt;
 &lt;li&gt;a natural winner-take-all dynamics of markets&lt;/li&gt;
