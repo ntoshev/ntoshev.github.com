@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<!--       table {
+        border: 1px solid black;
+      }
+      table td{
+        border: 1px solid black;
+      }
+ -->
+<html>
+  <head>
+    <title>NoSQL Architectures</title>
+    <meta charset="utf-8">
+    <style>
+      @import url(https://fonts.googleapis.com/css?family=Yanone+Kaffeesatz);
+      @import url(https://fonts.googleapis.com/css?family=Droid+Serif:400,700,400italic);
+      @import url(https://fonts.googleapis.com/css?family=Ubuntu+Mono:400,700,400italic);
+
+      body { font-family: 'Droid Serif'; }
+      h1, h2, h3 {
+        font-family: 'Yanone Kaffeesatz';
+        font-weight: normal;
+      }
+      .remark-code, .remark-inline-code { font-family: 'Ubuntu Mono'; }
+      .oimg {width: 100%}
+    </style>
+  </head>
+  <body>
+    <textarea id="source">
+
+class: center, middle
+
+# Design Space of NoSQL
+## Architectures and Trade-Offs
+
+---
+
+#Why NoSQL vs relational?
+- big data: 
+  - performance 
+  - scalability 
+  - reliability
+- object-relational impedance mismatch
+
+---
+
+# Data models
+- relational
+  - start anywhere, traverse relationships
+  - decouple declarative queries from execution plan
+- key-value store
+
+```javascript
+  {
+    "nik@blue-edge.bg" : "blob"
+  }
+```
+
+- document store
+```javascript
+  {
+    "nik@blue-edge.bg" : {
+      "name": "Nikola",
+      "phone": "+359899100701",
+      "data": {
+         ...
+      }
+    }
+  }
+```
+
+---
+
+# Secondary indexes
+
+```javascript
+  {
+    "nik@blue-edge.bg" : {
+      "name": "Nikola",
+      "phone": "+359899100701",
+      "data": {
+         ...
+      }
+    }
+  }
+
+  {
+    "Nikola" : "nik@blue-edge.bg" ,
+    ...
+  }
+
+  {
+    "Nikola" : ["nik@blue-edge.bg", "nikola.robakov@blue-edge.bg", ...] ,
+    ...
+  }
+```
+---
+# Graph databases
+
+![graph](graph.png)
+
+
+---
+# Graph databases 
+
+![graph](graph2.png)
+
+
+---
+<!--- # Row vs column stores -->
+
+![row vs col](row-store-v-column-store.gif)
+
+OLTP vs OLAP
+
+---
+
+# Data structures
+
+- preserving cardinality 
+  - hash table
+- order preserving 
+  - b-tree
+- space preserving
+  - r-tree
+  - kd-tree
+  - space-filling curves
+
+![Hilbert curve](hilbert.png)
+
+---
+
+# Distributed databases
+
+---
+# Distributed relational databases
+
+- replication
+
+Async | Sync
+:--------------|:---------------
+data loss | no data loss
+cheap | expensive
+failure tolerant | failure intolerant
+
+- sharding
+
+
+---
+# CAP theorem
+- consistency
+- availability
+- partition tolerance
+
+![CAP](cap.png)
+
+---
+
+# Eventual consistency
+- conflict resolution
+  - domain specific
+  - conflict-free replicated data types (CRDTs)
+
+
+---
+
+# Data storage
+## Relational transactions:
+- Atomic
+- Consistent
+- Isolated
+- Durable
+
+---
+# Databases and kernels
+
+![kernel](kernel.gif)
+
+
+---
+# Write-ahead logs
+
+- only a single I/O is atomic
+- databases needs to update at least table and index
+- committing writes to disk is slow
+- solution:
+  - write commands sequentially in a file
+  - update tables & indexes later
+  - recover reading the WAL
+---
+# Log structured storage
+
+![copy on write btree](cow_b_tree_structure.png)
+
+
+---
+# DIY NoSql - Database as a library
+- everything in memory datastructures, native for the language
+- single process single thread (with async io, Node.js, Python)
+- serialize everything and write it to disk
+  - potentially, keep a WAL
+  - alternatively, keep everything on disk and mmap it
+
+http://www.underengineering.com/2014/05/22/DIY-NoSql/
+
+
+<!---
+
+1) Data models; 
+ - relational databases vs key-value stores, secondary indexes
+ - row vs column stores
+ - graph databases
+ - geospatial data
+2) Distributed databases
+ - CAP theorem, strong vs eventual consistency
+ - quorum
+ - conflict-free replicated data types (CRDTs)
+3) Data storage
+ - Atomicity Consistency Isolation Durability (ACID)
+ - Write Ahead Logs (WAL)
+ - HDD vs SSD, log-structured storage
+ - numbers everyone should know
+ - database engines and the kernel
+ - database as a library - a simpler way
+-->
+
+    </textarea>
+    <script src="https://gnab.github.io/remark/downloads/remark-latest.min.js">
+    </script>
+    <script>
+      var slideshow = remark.create();
+    </script>
+  </body>
+</html>
