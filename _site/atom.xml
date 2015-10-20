@@ -4,13 +4,36 @@
  <title>Underengineering</title>
  <link href="http://underengineering.com/atom.xml" rel="self"/>
  <link href="http://underengineering.com/"/>
- <updated>2015-04-15T11:45:38+03:00</updated>
+ <updated>2015-10-20T17:03:41+03:00</updated>
  <id>http://underengineering.com</id>
  <author>
    <name>Nikola Toshev</name>
    <email></email>
  </author>
 
+ 
+ <entry>
+   <title>The Trade-Off of Microservices</title>
+   <link href="http://underengineering.com/2015/06/04/the-trade-off-of-microservices/"/>
+   <updated>2015-06-04T13:29:00Z</updated>
+   <id>http://underengineering.com/2015/06/04/the-trade-off-of-microservices</id>
+   <content type="html">&lt;p&gt;We&amp;#39;re hearing a lot about microservices lately - probably the latest article was Martin Fowler&amp;#39;s &lt;a href=&quot;http://martinfowler.com/bliki/MonolithFirst.html&quot;&gt;MonolithFirst&lt;/a&gt;. The previous flavor of the same thing were service oriented architectures.&lt;/p&gt;
+
+&lt;h2 id=&quot;toc_0&quot;&gt;Trade-Offs and Abstractions&lt;/h2&gt;
+
+&lt;p&gt;We are used to accepting performance hit to work in high level language versus a low level one. We choose algorithms that use more memory to finish faster. What is the trade-off of microservices? Let&amp;#39;s limit the analysis to one thing.&lt;/p&gt;
+
+&lt;h2 id=&quot;toc_1&quot;&gt;The Cost&lt;/h2&gt;
+
+&lt;p&gt;The cost of microservices vs monolith is performance and complexity. With microservices, we are taking the equivalent of function calls and making that an interface over the network, owned by different teams. This is &lt;/p&gt;
+
+&lt;h2 id=&quot;toc_2&quot;&gt;The Benefit&lt;/h2&gt;
+
+&lt;p&gt;The benefit is for engineering management, really. The benefit is that each team works on a separate thing and can have release cycles independent from the other teams. You pay cost in engineering in order to gain management flexibility  The cost is that it makes some interfaces in &lt;/p&gt;
+
+&lt;p&gt;There is a lot of talk about microservices lately. Before rushing to &lt;/p&gt;
+</content>
+ </entry>
  
  <entry>
    <title>The Economics of UI</title>
