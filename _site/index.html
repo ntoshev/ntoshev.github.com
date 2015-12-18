@@ -113,28 +113,75 @@
   
   <div class="post">
     <h1 class="post-title">
-      <a href="/2015/06/04/the-trade-off-of-microservices/">
-        The Trade-Off of Microservices
+      <a href="/2015/12/18/macros-with-theano/">
+        Macros with Theano
       </a>
     </h1>
 
-    <span class="post-date">04 Jun 2015</span>
+    <span class="post-date">18 Dec 2015</span>
 
-    <p>We&#39;re hearing a lot about microservices lately - probably the latest article was Martin Fowler&#39;s <a href="http://martinfowler.com/bliki/MonolithFirst.html">MonolithFirst</a>. The previous flavor of the same thing were service oriented architectures.</p>
+    <p>I&#39;ve been playing with Theano lately, implementing various neural networks and other computations to see if they are suitable to Theano&#39;s programming model. </p>
 
-<h2 id="toc_0">Trade-Offs and Abstractions</h2>
+<p><a href="https://en.wikipedia.org/wiki/Theano_%28software%29">Wikipedia says:</a> &quot;Theano is a numerical computation library for Python,&quot; but I find this misleading - Theano is really a mathematical expression compiler that doesn&#39;t have it&#39;s own syntax but is hosted in Python instead. This has the interesting consequence that the type of abstractions that works best with Theano is not functions or objects/classes, but macros - you write functions or methods in Python that generate and compose Theano expressions. I&#39;ll explain this in more detail in this post. Interestingly, <a href="https://www.tensorflow.org/">Google&#39;s TensorFlow</a> implements the same model, so the thesis of this post should apply to TensorFlow as well.</p>
 
-<p>We are used to accepting performance hit to work in high level language versus a low level one. We choose algorithms that use more memory to finish faster. What is the trade-off of microservices? Let&#39;s limit the analysis to one thing.</p>
+<p>With Theano the programmer builds a <a href="http://deeplearning.net/software/theano/tutorial/symbolic_graphs.html">&quot;computational graph&quot;</a> out of symbolic variables like this:</p>
+<div class="highlight"><pre><code class="python language-python" data-lang="python"><span class="kn">import</span> <span class="nn">theano.tensor</span> <span class="kn">as</span> <span class="nn">T</span>
+<span class="n">x</span> <span class="o">=</span> <span class="n">T</span><span class="o">.</span><span class="n">iscalar</span><span class="p">()</span>
+<span class="n">y</span> <span class="o">=</span> <span class="n">T</span><span class="o">.</span><span class="n">iscalar</span><span class="p">()</span>
+<span class="n">s</span> <span class="o">=</span> <span class="n">x</span><span class="o">+</span><span class="n">y</span>
+<span class="k">print</span> <span class="n">s</span><span class="o">.</span><span class="n">eval</span><span class="p">({</span><span class="n">x</span><span class="p">:</span><span class="mi">2</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span><span class="mi">2</span><span class="p">})</span> <span class="c">#4</span>
+<span class="k">print</span> <span class="n">s</span><span class="o">.</span><span class="n">eval</span><span class="p">({</span><span class="n">x</span><span class="p">:</span><span class="mi">1</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span><span class="mi">3</span><span class="p">})</span> <span class="c">#4</span>
+<span class="k">print</span> <span class="p">(</span><span class="mi">2</span><span class="o">*</span><span class="n">s</span><span class="p">)</span><span class="o">.</span><span class="n">eval</span><span class="p">({</span><span class="n">x</span><span class="p">:</span><span class="mi">2</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span><span class="mi">3</span><span class="p">})</span> <span class="c">#10</span>
+</code></pre></div>
+<p>Note that the value of <code>s</code> is an expression that can be evaluated many times with different input values, and as part of different computations. It essentially holds a directed graph with nodes being the variables and operations/intermediate results, and vertices connecting the arguments to the operations. This graph is then optimized and executed, typically on a GPU - when the data are not scalar values but large vectors, matrices or more generally tensors, the computation can be parallelized yielding 10-20x improvement in compute time versus a CPU.</p>
 
-<h2 id="toc_1">The Cost</h2>
+<p>For a simple computation you write the math expressions directly in Python as above. The practical problem with that is that very soon you find yourself writing similar expressions with minor differences over and over. The code quickly becomes unwieldy - it is as if you are trying to program without functions or objects! There is lots of Theano code like this on GitHub.</p>
 
-<p>The cost of microservices vs monolith is performance and complexity. With microservices, we are taking the equivalent of function calls and making that an interface over the network, owned by different teams. This is </p>
+<p>An example of repeated code is the code you use to optimize a cost function with gradient descent. You have to specify how to update parameters on every iteration - here is an example with 2 parameters:</p>
+<div class="highlight"><pre><code class="python language-python" data-lang="python"><span class="n">lr</span> <span class="o">=</span> <span class="mf">0.1</span> <span class="c"># learning rate; how much to move the parameters in the direction of the gradient</span>
 
-<h2 id="toc_2">The Benefit</h2>
+<span class="c"># theano will warn you that the order of updates is undefined since we use a dict, but the order doesn&#39;t matter</span>
+<span class="n">updates</span> <span class="o">=</span> <span class="p">{</span> 
+    <span class="n">W</span><span class="p">:</span> <span class="n">W</span><span class="o">-</span><span class="n">lr</span><span class="o">*</span><span class="n">T</span><span class="o">.</span><span class="n">grad</span><span class="p">(</span><span class="n">cost</span><span class="p">,</span> <span class="n">W</span><span class="p">),</span>
+    <span class="n">b</span><span class="p">:</span> <span class="n">b</span><span class="o">-</span><span class="n">lr</span><span class="o">*</span><span class="n">T</span><span class="o">.</span><span class="n">grad</span><span class="p">(</span><span class="n">cost</span><span class="p">,</span> <span class="n">b</span><span class="p">)</span>
+<span class="p">}</span>
+<span class="n">train_model</span> <span class="o">=</span> <span class="n">theano</span><span class="o">.</span><span class="n">function</span><span class="p">([</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">],</span> <span class="n">outputs</span><span class="o">=</span><span class="n">cost</span><span class="p">,</span> <span class="n">updates</span><span class="o">=</span><span class="n">updates</span><span class="p">)</span> 
+</code></pre></div>
+<p>Note that the learning rate <code>lr</code> is a Python variable, not a Theano symbolic variable, so it&#39;s a constant at the Theano graph compile time (the last line is when compilation happens).</p>
 
-<p>The benefit is for engineering management, really. The benefit is that each team works on a separate thing and can have release cycles independent from the other teams. You pay cost in engineering in order to gain management flexibility  The cost is that it makes some interfaces in </p>
+<p>This seems simple enough, but you may have many parameters, and add / remove them many times experimenting, so how could you remove the repetition? How about writing a function that produces all the necessary updates for a list of your model&#39;s parameters, used like this:</p>
+<div class="highlight"><pre><code class="python language-python" data-lang="python"><span class="n">train_model</span> <span class="o">=</span> <span class="n">theano</span><span class="o">.</span><span class="n">function</span><span class="p">([</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">],</span> <span class="n">outputs</span><span class="o">=</span><span class="n">cost</span><span class="p">,</span> <span class="n">updates</span><span class="o">=</span><span class="n">sgd</span><span class="p">(</span><span class="mf">0.1</span><span class="p">,</span> <span class="n">cost</span><span class="p">,</span> <span class="n">W</span><span class="p">,</span> <span class="n">b</span><span class="p">))</span>
+</code></pre></div>
+<p>Here is an implementation with a dict comprehension:</p>
+<div class="highlight"><pre><code class="python language-python" data-lang="python"><span class="k">def</span> <span class="nf">sgd</span><span class="p">(</span><span class="n">lr</span><span class="p">,</span> <span class="n">cost</span><span class="p">,</span> <span class="o">*</span><span class="n">vs</span><span class="p">):</span>
+    <span class="k">return</span> <span class="p">{</span><span class="n">v</span><span class="p">:</span> <span class="n">v</span><span class="o">-</span><span class="n">lr</span><span class="o">*</span><span class="n">T</span><span class="o">.</span><span class="n">grad</span><span class="p">(</span><span class="n">cost</span><span class="p">,</span> <span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">vs</span><span class="p">}</span>
+</code></pre></div>
+<p>Another example is regularization - L2 regularization takes the weight matrices that parametrize your model, and includes the sum of squared values of the weights in the cost function, like this:</p>
+<div class="highlight"><pre><code class="python language-python" data-lang="python"><span class="n">cost</span> <span class="o">=</span> <span class="n">loss</span> <span class="o">+</span> <span class="mf">0.01</span><span class="o">*</span><span class="p">((</span><span class="n">W</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">+</span><span class="p">(</span><span class="n">W_prime</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span>
+</code></pre></div>
+<p>We could generate that term:</p>
+<div class="highlight"><pre><code class="python language-python" data-lang="python"><span class="k">def</span> <span class="nf">L2</span><span class="p">(</span><span class="n">l</span><span class="p">,</span> <span class="o">*</span><span class="n">vs</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">l</span><span class="o">*</span><span class="n">T</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="o">*</span><span class="p">((</span><span class="n">v</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">vs</span><span class="p">))</span>
 
-<p>There is a lot of talk about microservices lately. Before rushing to </p>
+<span class="n">cost</span> <span class="o">=</span> <span class="n">loss</span> <span class="o">+</span> <span class="n">L2</span><span class="p">(</span><span class="mf">0.01</span><span class="p">,</span> <span class="n">W</span><span class="p">,</span> <span class="n">W_prime</span><span class="p">)</span>
+</code></pre></div>
+<p>If you went through <a href="http://deeplearning.net/tutorial/contents.html">Theano&#39;s deep learning tutorials</a>, you have probably realized that the classes implementing logistic regression, hidden layers, etc. have methods doing exactly that - they generate pieces of the computational graph that are composed together to produce the complete model.</p>
+
+<p>Since Theano&#39;s computational graph contains all the information about its inputs (it&#39;s a data structure similar to a compiler&#39;s internal representation of a program, but a structure we can traverse), we could find out our parameters dynamically from the cost expression itself, without specifying it explicitly. Here is a function that finds out the variables of specific type (usually <code>theano.tensor.SharedVariable</code>, which is the type of vars Theano keeps state in) that your expression depends on:</p>
+<div class="highlight"><pre><code class="python language-python" data-lang="python"><span class="k">def</span> <span class="nf">find_vars</span><span class="p">(</span><span class="n">exp</span><span class="p">,</span> <span class="n">var_type</span><span class="o">=</span><span class="n">T</span><span class="o">.</span><span class="n">sharedvar</span><span class="o">.</span><span class="n">SharedVariable</span><span class="p">):</span>
+    <span class="k">assert</span> <span class="s">&#39;owner&#39;</span> <span class="ow">in</span> <span class="n">exp</span><span class="p">,</span> <span class="s">&quot;exp must be a Theano expression&quot;</span>
+    <span class="k">if</span> <span class="n">exp</span><span class="o">.</span><span class="n">owner</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">v</span> <span class="k">for</span> <span class="n">inp</span> <span class="ow">in</span> <span class="n">exp</span><span class="o">.</span><span class="n">owner</span><span class="o">.</span><span class="n">inputs</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">find_vars</span><span class="p">(</span><span class="n">inp</span><span class="p">,</span> <span class="n">var_type</span><span class="p">)]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">exp</span><span class="p">]</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">exp</span><span class="p">,</span> <span class="n">var_type</span><span class="p">)</span> <span class="k">else</span> <span class="p">[]</span>
+
+<span class="n">find_vars</span><span class="p">(</span><span class="n">g</span><span class="p">,</span> <span class="n">T</span><span class="o">.</span><span class="n">TensorVariable</span><span class="p">)</span> <span class="c"># [&lt;TensorType(int32, scalar)&gt;, &lt;TensorType(int32, scalar)&gt;] x and y</span>
+</code></pre></div>
+<p>This means we could minimize a cost function using gradient descent like this:</p>
+<div class="highlight"><pre><code class="python language-python" data-lang="python"><span class="k">def</span> <span class="nf">minimize_cost</span><span class="p">(</span><span class="n">inputs</span><span class="p">,</span> <span class="n">cost</span><span class="p">,</span> <span class="n">lr</span><span class="p">):</span> <span class="c"># simplified, should accept all params of theano.function(...)</span>
+    <span class="k">return</span> <span class="n">theano</span><span class="o">.</span><span class="n">function</span><span class="p">(</span><span class="n">inputs</span><span class="p">,</span> <span class="n">cost</span><span class="p">,</span> <span class="n">updates</span><span class="o">=</span><span class="n">sgd</span><span class="p">(</span><span class="n">lr</span><span class="p">,</span> <span class="n">cost</span><span class="p">,</span> <span class="o">*</span><span class="n">find_vars</span><span class="p">(</span><span class="n">cost</span><span class="p">)))</span>
+</code></pre></div>
+<p>Adding regularization is left as an exercise for the reader (hint: usually only the weight matrices are included in the regularization term, not the bias vectors).</p>
 
   </div>
   
