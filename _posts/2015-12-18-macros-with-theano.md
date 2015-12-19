@@ -7,7 +7,10 @@ categories:
 
 I've been playing with Theano lately, implementing various neural networks and other computations to see if they are suitable to Theano's programming model. 
 
-[Wikipedia says:](https://en.wikipedia.org/wiki/Theano_%28software%29) "Theano is a numerical computation library for Python," but I find this misleading - Theano is really a mathematical expression compiler that doesn't have it's own syntax but is hosted in Python instead. This has the interesting consequence that the type of abstractions that works best with Theano is not functions or objects/classes, but macros - you write functions or methods in Python that generate and compose Theano expressions. I'll explain this in more detail in this post. Interestingly, [Google's TensorFlow](https://www.tensorflow.org/) implements the same model, so the thesis of this post should apply to TensorFlow as well.
+[Wikipedia says:](https://en.wikipedia.org/wiki/Theano_%28software%29)
+> Theano is a numerical computation library for Python.
+
+I find this misleading - a better description is that Theano is a mathematical expression compiler that doesn't have its own syntax but is hosted in Python instead. This has the interesting consequence that the type of abstractions that works best with Theano is not functions or objects/classes, but macros - you write functions or methods in Python that generate and compose Theano expressions. I'll explain this in more detail in this post. Interestingly, [Google's TensorFlow](https://www.tensorflow.org/) implements the same model, so the thesis of this post should apply to TensorFlow as well.
 
 With Theano the programmer builds a ["computational graph"](http://deeplearning.net/software/theano/tutorial/symbolic_graphs.html) out of symbolic variables like this:
 

@@ -114,7 +114,13 @@
   <span class="post-date">18 Dec 2015</span>
   <p>I&#39;ve been playing with Theano lately, implementing various neural networks and other computations to see if they are suitable to Theano&#39;s programming model. </p>
 
-<p><a href="https://en.wikipedia.org/wiki/Theano_%28software%29">Wikipedia says:</a> &quot;Theano is a numerical computation library for Python,&quot; but I find this misleading - Theano is really a mathematical expression compiler that doesn&#39;t have it&#39;s own syntax but is hosted in Python instead. This has the interesting consequence that the type of abstractions that works best with Theano is not functions or objects/classes, but macros - you write functions or methods in Python that generate and compose Theano expressions. I&#39;ll explain this in more detail in this post. Interestingly, <a href="https://www.tensorflow.org/">Google&#39;s TensorFlow</a> implements the same model, so the thesis of this post should apply to TensorFlow as well.</p>
+<p><a href="https://en.wikipedia.org/wiki/Theano_%28software%29">Wikipedia says:</a></p>
+
+<blockquote>
+<p>Theano is a numerical computation library for Python.</p>
+</blockquote>
+
+<p>I find this misleading - a better description is that Theano is a mathematical expression compiler that doesn&#39;t have its own syntax but is hosted in Python instead. This has the interesting consequence that the type of abstractions that works best with Theano is not functions or objects/classes, but macros - you write functions or methods in Python that generate and compose Theano expressions. I&#39;ll explain this in more detail in this post. Interestingly, <a href="https://www.tensorflow.org/">Google&#39;s TensorFlow</a> implements the same model, so the thesis of this post should apply to TensorFlow as well.</p>
 
 <p>With Theano the programmer builds a <a href="http://deeplearning.net/software/theano/tutorial/symbolic_graphs.html">&quot;computational graph&quot;</a> out of symbolic variables like this:</p>
 <div class="highlight"><pre><code class="python language-python" data-lang="python"><span class="kn">import</span> <span class="nn">theano.tensor</span> <span class="kn">as</span> <span class="nn">T</span>

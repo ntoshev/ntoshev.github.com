@@ -4,7 +4,7 @@
  <title>Underengineering</title>
  <link href="http://underengineering.com/atom.xml" rel="self"/>
  <link href="http://underengineering.com/"/>
- <updated>2015-12-18T17:50:26+02:00</updated>
+ <updated>2015-12-18T18:00:55+02:00</updated>
  <id>http://underengineering.com</id>
  <author>
    <name>Nikola Toshev</name>
@@ -19,7 +19,13 @@
    <id>http://underengineering.com/2015/12/18/macros-with-theano</id>
    <content type="html">&lt;p&gt;I&amp;#39;ve been playing with Theano lately, implementing various neural networks and other computations to see if they are suitable to Theano&amp;#39;s programming model. &lt;/p&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://en.wikipedia.org/wiki/Theano_%28software%29&quot;&gt;Wikipedia says:&lt;/a&gt; &amp;quot;Theano is a numerical computation library for Python,&amp;quot; but I find this misleading - Theano is really a mathematical expression compiler that doesn&amp;#39;t have it&amp;#39;s own syntax but is hosted in Python instead. This has the interesting consequence that the type of abstractions that works best with Theano is not functions or objects/classes, but macros - you write functions or methods in Python that generate and compose Theano expressions. I&amp;#39;ll explain this in more detail in this post. Interestingly, &lt;a href=&quot;https://www.tensorflow.org/&quot;&gt;Google&amp;#39;s TensorFlow&lt;/a&gt; implements the same model, so the thesis of this post should apply to TensorFlow as well.&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;https://en.wikipedia.org/wiki/Theano_%28software%29&quot;&gt;Wikipedia says:&lt;/a&gt;&lt;/p&gt;
+
+&lt;blockquote&gt;
+&lt;p&gt;Theano is a numerical computation library for Python.&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;I find this misleading - a better description is that Theano is a mathematical expression compiler that doesn&amp;#39;t have its own syntax but is hosted in Python instead. This has the interesting consequence that the type of abstractions that works best with Theano is not functions or objects/classes, but macros - you write functions or methods in Python that generate and compose Theano expressions. I&amp;#39;ll explain this in more detail in this post. Interestingly, &lt;a href=&quot;https://www.tensorflow.org/&quot;&gt;Google&amp;#39;s TensorFlow&lt;/a&gt; implements the same model, so the thesis of this post should apply to TensorFlow as well.&lt;/p&gt;
 
 &lt;p&gt;With Theano the programmer builds a &lt;a href=&quot;http://deeplearning.net/software/theano/tutorial/symbolic_graphs.html&quot;&gt;&amp;quot;computational graph&amp;quot;&lt;/a&gt; out of symbolic variables like this:&lt;/p&gt;
 &lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;python language-python&quot; data-lang=&quot;python&quot;&gt;&lt;span class=&quot;kn&quot;&gt;import&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;theano.tensor&lt;/span&gt; &lt;span class=&quot;kn&quot;&gt;as&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;T&lt;/span&gt;
