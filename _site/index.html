@@ -175,9 +175,9 @@
 
 <p>Since Theano&#39;s computational graph contains all the information about its inputs (it&#39;s a data structure similar to a compiler&#39;s internal representation of a program, but a structure we can traverse), we could find out our parameters dynamically from the cost expression itself, without specifying it explicitly. Here is a function that finds out the variables of specific type (usually <code>theano.tensor.SharedVariable</code>, which is the type of vars Theano keeps state in) that your expression depends on:</p>
 <div class="highlight"><pre><code class="python language-python" data-lang="python"><span class="k">def</span> <span class="nf">find_vars</span><span class="p">(</span><span class="n">exp</span><span class="p">,</span> <span class="n">var_type</span><span class="o">=</span><span class="n">T</span><span class="o">.</span><span class="n">sharedvar</span><span class="o">.</span><span class="n">SharedVariable</span><span class="p">):</span>
-    <span class="k">assert</span> <span class="s">&#39;owner&#39;</span> <span class="ow">in</span> <span class="n">exp</span><span class="p">,</span> <span class="s">&quot;exp must be a Theano expression&quot;</span>
+    <span class="k">assert</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">exp</span><span class="p">,</span> <span class="s">&#39;owner&#39;</span><span class="p">),</span> <span class="s">&quot;exp must be a Theano expression&quot;</span>
     <span class="k">if</span> <span class="n">exp</span><span class="o">.</span><span class="n">owner</span><span class="p">:</span>
-        <span class="k">return</span> <span class="p">[</span><span class="n">v</span> <span class="k">for</span> <span class="n">inp</span> <span class="ow">in</span> <span class="n">exp</span><span class="o">.</span><span class="n">owner</span><span class="o">.</span><span class="n">inputs</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">find_vars</span><span class="p">(</span><span class="n">inp</span><span class="p">,</span> <span class="n">var_type</span><span class="p">)]</span>
+        <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">v</span> <span class="k">for</span> <span class="n">inp</span> <span class="ow">in</span> <span class="n">exp</span><span class="o">.</span><span class="n">owner</span><span class="o">.</span><span class="n">inputs</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">find_vars</span><span class="p">(</span><span class="n">inp</span><span class="p">,</span> <span class="n">var_type</span><span class="p">)))</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="k">return</span> <span class="p">[</span><span class="n">exp</span><span class="p">]</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">exp</span><span class="p">,</span> <span class="n">var_type</span><span class="p">)</span> <span class="k">else</span> <span class="p">[]</span>
 
@@ -188,6 +188,8 @@
     <span class="k">return</span> <span class="n">theano</span><span class="o">.</span><span class="n">function</span><span class="p">(</span><span class="n">inputs</span><span class="p">,</span> <span class="n">cost</span><span class="p">,</span> <span class="n">updates</span><span class="o">=</span><span class="n">sgd</span><span class="p">(</span><span class="n">lr</span><span class="p">,</span> <span class="n">cost</span><span class="p">,</span> <span class="o">*</span><span class="n">find_vars</span><span class="p">(</span><span class="n">cost</span><span class="p">)))</span>
 </code></pre></div>
 <p>Adding regularization is left as an exercise for the reader (hint: usually only the weight matrices are included in the regularization term, not the bias vectors).</p>
+
+<p><em>Thanks Stefan Petrov for suggestions and corrections</em></p>
 
   </div>
   

@@ -78,9 +78,9 @@ Since Theano's computational graph contains all the information about its inputs
 
 ```python
 def find_vars(exp, var_type=T.sharedvar.SharedVariable):
-	assert 'owner' in exp, "exp must be a Theano expression"
+    assert hasattr(exp, 'owner'), "exp must be a Theano expression"
     if exp.owner:
-    	return [v for inp in exp.owner.inputs for v in find_vars(inp, var_type)]
+        return list(set(v for inp in exp.owner.inputs for v in find_vars(inp, var_type)))
     else:
         return [exp] if isinstance(exp, var_type) else []
 
@@ -95,3 +95,5 @@ def minimize_cost(inputs, cost, lr): # simplified, should accept all params of t
 ```
 
 Adding regularization is left as an exercise for the reader (hint: usually only the weight matrices are included in the regularization term, not the bias vectors).
+
+*Thanks to Stefan Petrov for suggestions and corrections.*
