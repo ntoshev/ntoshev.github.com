@@ -131,7 +131,7 @@
 <span class="k">print</span> <span class="n">s</span><span class="o">.</span><span class="n">eval</span><span class="p">({</span><span class="n">x</span><span class="p">:</span><span class="mi">1</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span><span class="mi">3</span><span class="p">})</span> <span class="c">#4</span>
 <span class="k">print</span> <span class="p">(</span><span class="mi">2</span><span class="o">*</span><span class="n">s</span><span class="p">)</span><span class="o">.</span><span class="n">eval</span><span class="p">({</span><span class="n">x</span><span class="p">:</span><span class="mi">2</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span><span class="mi">3</span><span class="p">})</span> <span class="c">#10</span>
 </code></pre></div>
-<p>Note that the value of <code>s</code> is an expression that can be evaluated many times with different input values, and as part of different computations. It essentially holds a directed graph with nodes being the variables and operations/intermediate results, and vertices connecting the arguments to the operations. This graph is then optimized and executed, typically on a GPU - when the data are not scalar values but large vectors, matrices or more generally tensors, the computation can be parallelized yielding 10-20x improvement in compute time versus a CPU.</p>
+<p>Note that the value of <code>s</code> is an expression that can be evaluated many times with different input values, and as part of different computations. It essentially holds a directed acyclic graph with nodes being the variables and operations/intermediate results, and vertices connecting the arguments to the operations. This graph is then optimized and executed, typically on a GPU - when the data are not scalar values but large vectors, matrices or more generally tensors, the computation can be parallelized yielding 10-20x improvement in compute time versus a CPU.</p>
 
 <p>For a simple computation you write the math expressions directly in Python as above. The practical problem with that is that very soon you find yourself writing similar expressions with minor differences over and over. The code quickly becomes unwieldy - it is as if you are trying to program without functions or objects! There is lots of Theano code like this on GitHub.</p>
 
@@ -155,13 +155,14 @@
     <span class="k">return</span> <span class="p">{</span><span class="n">v</span><span class="p">:</span> <span class="n">v</span><span class="o">-</span><span class="n">lr</span><span class="o">*</span><span class="n">T</span><span class="o">.</span><span class="n">grad</span><span class="p">(</span><span class="n">cost</span><span class="p">,</span> <span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">vs</span><span class="p">}</span>
 </code></pre></div>
 <p>Another example is regularization - L2 regularization takes the weight matrices that parametrize your model, and includes the sum of squared values of the weights in the cost function, like this:</p>
-<div class="highlight"><pre><code class="python language-python" data-lang="python"><span class="n">cost</span> <span class="o">=</span> <span class="n">loss</span> <span class="o">+</span> <span class="mf">0.01</span><span class="o">*</span><span class="p">((</span><span class="n">W</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">+</span><span class="p">(</span><span class="n">W_prime</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span>
+<div class="highlight"><pre><code class="python language-python" data-lang="python"><span class="c"># logistic regression has only one matrix W, but a 2-layer network would have 2 weight matrices W0 and W1</span>
+<span class="n">cost</span> <span class="o">=</span> <span class="n">loss</span> <span class="o">+</span> <span class="mf">0.01</span><span class="o">*</span><span class="p">((</span><span class="n">W0</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">+</span><span class="p">(</span><span class="n">W1</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span>
 </code></pre></div>
 <p>We could generate that term:</p>
 <div class="highlight"><pre><code class="python language-python" data-lang="python"><span class="k">def</span> <span class="nf">L2</span><span class="p">(</span><span class="n">l</span><span class="p">,</span> <span class="o">*</span><span class="n">vs</span><span class="p">):</span>
     <span class="k">return</span> <span class="n">l</span><span class="o">*</span><span class="n">T</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="o">*</span><span class="p">((</span><span class="n">v</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">vs</span><span class="p">))</span>
 
-<span class="n">cost</span> <span class="o">=</span> <span class="n">loss</span> <span class="o">+</span> <span class="n">L2</span><span class="p">(</span><span class="mf">0.01</span><span class="p">,</span> <span class="n">W</span><span class="p">,</span> <span class="n">W_prime</span><span class="p">)</span>
+<span class="n">cost</span> <span class="o">=</span> <span class="n">loss</span> <span class="o">+</span> <span class="n">L2</span><span class="p">(</span><span class="mf">0.01</span><span class="p">,</span> <span class="n">W0</span><span class="p">,</span> <span class="n">W1</span><span class="p">)</span> 
 </code></pre></div>
 <p>If you went through <a href="http://deeplearning.net/tutorial/contents.html">Theano&#39;s deep learning tutorials</a>, you have probably realized that the classes implementing logistic regression, hidden layers, etc. have methods doing exactly that - they generate pieces of the computational graph that are composed together to produce the complete model.</p>
 
@@ -181,7 +182,7 @@
 </code></pre></div>
 <p>Adding regularization is left as an exercise for the reader (hint: usually only the weight matrices are included in the regularization term, not the bias vectors).</p>
 
-<p><em>Thanks Stefan Petrov for suggestions and corrections</em></p>
+<p><em>Thanks to Stefan Petrov for suggestions and corrections.</em></p>
 
 </div>
 

@@ -24,7 +24,7 @@ print s.eval({x:1, y:3}) #4
 print (2*s).eval({x:2, y:3}) #10
 ```
 
-Note that the value of `s` is an expression that can be evaluated many times with different input values, and as part of different computations. It essentially holds a directed graph with nodes being the variables and operations/intermediate results, and vertices connecting the arguments to the operations. This graph is then optimized and executed, typically on a GPU - when the data are not scalar values but large vectors, matrices or more generally tensors, the computation can be parallelized yielding 10-20x improvement in compute time versus a CPU.
+Note that the value of `s` is an expression that can be evaluated many times with different input values, and as part of different computations. It essentially holds a directed acyclic graph with nodes being the variables and operations/intermediate results, and vertices connecting the arguments to the operations. This graph is then optimized and executed, typically on a GPU - when the data are not scalar values but large vectors, matrices or more generally tensors, the computation can be parallelized yielding 10-20x improvement in compute time versus a CPU.
 
 For a simple computation you write the math expressions directly in Python as above. The practical problem with that is that very soon you find yourself writing similar expressions with minor differences over and over. The code quickly becomes unwieldy - it is as if you are trying to program without functions or objects! There is lots of Theano code like this on GitHub.
 
@@ -59,7 +59,8 @@ def sgd(lr, cost, *vs):
 Another example is regularization - L2 regularization takes the weight matrices that parametrize your model, and includes the sum of squared values of the weights in the cost function, like this:
 
 ```python
-cost = loss + 0.01*((W**2).sum() +(W_prime**2).sum())
+# logistic regression has only one matrix W, but a 2-layer network would have 2 weight matrices W0 and W1
+cost = loss + 0.01*((W0**2).sum() +(W1**2).sum())
 ```
 
 We could generate that term:
@@ -69,7 +70,7 @@ We could generate that term:
 def L2(l, *vs):
     return l*T.add(*((v**2).sum() for v in vs))
 
-cost = loss + L2(0.01, W, W_prime)
+cost = loss + L2(0.01, W0, W1) 
 ```
 
 If you went through [Theano's deep learning tutorials](http://deeplearning.net/tutorial/contents.html), you have probably realized that the classes implementing logistic regression, hidden layers, etc. have methods doing exactly that - they generate pieces of the computational graph that are composed together to produce the complete model.
